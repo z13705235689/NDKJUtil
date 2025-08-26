@@ -1,0 +1,37 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+.env
+.venv
+env/
+venv/
+
+# Byte-compiled caches
+*/__pycache__/
+
+# Build / dist
+build/
+dist/
+*.spec
+
+# --- Tools / IDE ---
+# JetBrains / PyCharm
+.idea/
+*.iml
+
+# VSCode (如有)
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Text editor temp
+*.swp
+*.swo
