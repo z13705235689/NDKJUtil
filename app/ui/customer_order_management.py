@@ -7,15 +7,14 @@
 import sys
 import os
 from datetime import datetime, timedelta
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, 
-                             QPushButton, QLabel, QFileDialog, QMessageBox,
-                             QTableWidget, QTableWidgetItem, QHeaderView,
-                             QDateEdit, QComboBox, QLineEdit, QGroupBox,
-                             QGridLayout, QTextEdit, QProgressBar, QFrame,
-                             QSplitter, QScrollArea, QWidget, QSizePolicy,
-                             QTableWidgetItem, QHeaderView)
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QPushButton, QLabel,
+    QFileDialog, QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView,
+    QDateEdit, QComboBox, QLineEdit, QGroupBox, QGridLayout, QTextEdit,
+    QProgressBar, QFrame, QSplitter, QScrollArea, QSizePolicy
+)
 from PySide6.QtCore import Qt, QThread, Signal, QDate, QTimer
-from PySide6.QtGui import QFont, QColor, QPalette, QIcon
+from PySide6.QtGui import QFont, QColor
 
 from app.services.customer_order_service import CustomerOrderService
 
@@ -178,14 +177,10 @@ class CustomerOrderManagement(QWidget):
         kanban_layout = QVBoxLayout()
         kanban_layout.setContentsMargins(5, 5, 5, 5)
         
-        # 创建看板表格 - 重新设计为透视表样式
+        # 创建看板表格 - 透视表样式
         self.kanban_table = QTableWidget()
-        
-        # 设置表格样式
-        self.kanban_table.setAlternatingRowColors(True)
-        self.kanban_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.kanban_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        
+        self.setup_kanban_table()
+
         # 设置表格大小策略
         self.kanban_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
@@ -561,10 +556,6 @@ class CustomerOrderManagement(QWidget):
                 
                 row_index += 1
             
-            # 设置表格样式
-            self.kanban_table.setAlternatingRowColors(True)
-            self.kanban_table.setSelectionBehavior(QTableWidget.SelectRows)
-            
             print(f"   ✅ 看板数据加载完成，共 {row_count} 行数据")
             
         except Exception as e:
@@ -606,9 +597,26 @@ class CustomerOrderManagement(QWidget):
                 self.order_table.setItem(row, 9, QTableWidgetItem(str(item['RequiredQty'])))
                 self.order_table.setItem(row, 10, QTableWidgetItem(str(item['CumulativeQty'])))
                 self.order_table.setItem(row, 11, QTableWidgetItem(str(item['NetRequiredQty'])))
+
+                # 操作列 - 查看详情按钮
+                detail_btn = QPushButton("详情")
+                detail_btn.clicked.connect(lambda _, d=item: self.show_order_detail(d))
+                self.order_table.setCellWidget(row, 12, detail_btn)
                 
         except Exception as e:
             print(f"加载订单数据失败: {e}")
+
+    def show_order_detail(self, order):
+        """显示订单详情信息"""
+        info = (
+            f"订单号: {order['OrderNumber']}\n"
+            f"供应商: {order['SupplierName']}\n"
+            f"客户: {order['CustomerName']}\n"
+            f"交货日期: {order['DeliveryDate']}\n"
+            f"订单类型: {order['OrderType']}\n"
+            f"需求数量: {order['RequiredQty']}\n"
+        )
+        QMessageBox.information(self, "订单详情", info)
     
     def load_history_data(self):
         """加载导入历史数据"""
@@ -661,25 +669,39 @@ class CustomerOrderManagement(QWidget):
     def load_version_list(self):
         """加载版本列表"""
         try:
+            # 记录当前选择的版本ID以便刷新后恢复
+            current_id = self.get_selected_version_id()
+
             # 获取导入历史记录作为版本列表
             history_data = CustomerOrderService.get_import_history()
-            
-            # 清空现有版本
+
+            # 清空现有版本并重新填充
             self.version_combo.clear()
             self.version_combo.addItem("全部版本")
-            
-            # 添加成功导入的版本
+
             for record in history_data:
                 if record['ImportStatus'] == 'Success':
                     version_text = f"{record['FileName']} ({record['ImportDate']})"
                     self.version_combo.addItem(version_text, record['ImportId'])
-            
+
+            # 如果之前选中的版本仍然存在，则恢复选择
+            if current_id is not None:
+                index = self.version_combo.findData(current_id)
+                if index != -1:
+                    self.version_combo.setCurrentIndex(index)
+
             print(f"加载了 {len(history_data)} 个版本记录")
-            
+
         except Exception as e:
             print(f"加载版本列表失败: {e}")
     
     def get_selected_version_id(self):
         """获取选中的版本ID"""
         current_data = self.version_combo.currentData()
-        return current_data if current_data else None
+        if current_data is None:
+            return None
+        try:
+            return int(current_data)
+        except (TypeError, ValueError):
+            # 如果转换失败，返回 None 以避免后续计算错误
+            return None
