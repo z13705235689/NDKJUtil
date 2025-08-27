@@ -79,7 +79,13 @@ class CustomerOrderService:
             # 提取发布日期
             release_match = re.search(r'Release Date:\s*(\d{2}/\d{2}/\d{2})', section)
             if release_match:
-                order_info['ReleaseDate'] = release_match.group(1)
+                try:
+                    rd = datetime.strptime(release_match.group(1), '%m/%d/%y')
+                    if rd.year < 2000:
+                        rd = rd.replace(year=rd.year + 2000)
+                    order_info['ReleaseDate'] = rd.strftime('%Y-%m-%d')
+                except Exception:
+                    order_info['ReleaseDate'] = release_match.group(1)
             
             # 提取采购员
             buyer_match = re.search(r'Buyer:\s*(\w+)', section)
@@ -125,24 +131,23 @@ class CustomerOrderService:
             delivery_matches = re.findall(delivery_pattern, section)
             
             for delivery_match in delivery_matches:
-                delivery_date = delivery_match[0]
+                delivery_date_raw = delivery_match[0]
                 order_type = delivery_match[1]
                 required_qty = float(delivery_match[2].replace(',', ''))
                 cumulative_qty = float(delivery_match[3].replace(',', ''))
                 net_required_qty = float(delivery_match[4].replace(',', ''))
-                
-                # 计算日历周
+
+                # 转换日期并计算日历周
                 try:
-                    date_obj = datetime.strptime(delivery_date, '%m/%d/%y')
-                    # 调整年份（假设20xx年）
+                    date_obj = datetime.strptime(delivery_date_raw, '%m/%d/%y')
                     if date_obj.year < 2000:
                         date_obj = date_obj.replace(year=date_obj.year + 2000)
-                    
-                    # 计算ISO日历周
+                    delivery_date = date_obj.strftime('%Y-%m-%d')
                     calendar_week = f"CW{date_obj.isocalendar()[1]:02d}"
-                except:
+                except Exception:
+                    delivery_date = delivery_date_raw
                     calendar_week = ""
-                
+
                 line_data = {
                     'OrderNumber': order_number,
                     'ItemNumber': item_number,
@@ -157,7 +162,7 @@ class CustomerOrderService:
                     'InTransitQty': in_transit_qty,
                     'ReceivedQty': cum_received
                 }
-                
+
                 lines.append(line_data)
             
             return lines
@@ -193,49 +198,53 @@ class CustomerOrderService:
             # 保存到数据库
             db_manager = DatabaseManager()
             with db_manager.get_conn() as conn:
-                # 开始事务
                 conn.execute("BEGIN TRANSACTION")
-                
+
                 try:
+                    # 创建导入历史记录，获取版本ID
+                    import_id = CustomerOrderService._create_import_history(conn, file_name)
+
                     # 保存订单主表
                     saved_orders = []
                     for order in orders:
-                        order_id = CustomerOrderService._save_order_header(conn, order)
+                        order_id = CustomerOrderService._save_order_header(conn, order, import_id)
                         if order_id:
                             saved_orders.append((order_id, order['OrderNumber']))
-                    
+
                     # 保存订单明细
                     saved_lines = 0
                     for line in order_lines:
-                        # 找到对应的订单ID
                         order_id = None
                         for oid, onum in saved_orders:
                             if onum == line['OrderNumber']:
                                 order_id = oid
                                 break
-                        
                         if order_id:
-                            if CustomerOrderService._save_order_line(conn, order_id, line):
+                            if CustomerOrderService._save_order_line(conn, order_id, line, import_id):
                                 saved_lines += 1
-                    
-                    # 记录导入历史
-                    CustomerOrderService._save_import_history(
-                        conn, file_name, len(saved_orders), saved_lines
+
+                    # 更新导入历史
+                    CustomerOrderService._finalize_import_history(
+                        conn, import_id, len(saved_orders), saved_lines, 'Success'
                     )
-                    
-                    # 提交事务
+
                     conn.execute("COMMIT")
-                    
                     return {
                         'success': True,
                         'message': f'成功导入 {len(saved_orders)} 个订单，{saved_lines} 条明细',
                         'order_count': len(saved_orders),
-                        'line_count': saved_lines
+                        'line_count': saved_lines,
+                        'import_id': import_id
                     }
-                    
+
                 except Exception as e:
-                    # 回滚事务
                     conn.execute("ROLLBACK")
+                    try:
+                        CustomerOrderService._finalize_import_history(
+                            conn, import_id, 0, 0, 'Failed', str(e)
+                        )
+                    except Exception:
+                        pass
                     raise e
                     
         except Exception as e:
@@ -247,16 +256,17 @@ class CustomerOrderService:
             }
     
     @staticmethod
-    def _save_order_header(conn, order_data: Dict) -> Optional[int]:
+    def _save_order_header(conn, order_data: Dict, import_id: int) -> Optional[int]:
         """保存订单主表"""
         try:
             cursor = conn.execute("""
-                INSERT OR REPLACE INTO CustomerOrders 
-                (OrderNumber, SupplierCode, SupplierName, CustomerCode, CustomerName, 
+                INSERT OR REPLACE INTO CustomerOrders
+                (OrderNumber, ImportId, SupplierCode, SupplierName, CustomerCode, CustomerName,
                  ReleaseDate, Buyer, ShipToAddress, OrderStatus, Remark)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_data.get('OrderNumber', ''),
+                import_id,
                 order_data.get('SupplierCode', ''),
                 order_data.get('SupplierName', ''),
                 order_data.get('CustomerCode', ''),
@@ -285,17 +295,18 @@ class CustomerOrderService:
             return None
     
     @staticmethod
-    def _save_order_line(conn, order_id: int, line_data: Dict) -> bool:
+    def _save_order_line(conn, order_id: int, line_data: Dict, import_id: int) -> bool:
         """保存订单明细"""
         try:
             conn.execute("""
-                INSERT OR REPLACE INTO CustomerOrderLines 
-                (OrderId, ItemNumber, ItemDescription, UnitOfMeasure, DeliveryDate, 
+                INSERT OR REPLACE INTO CustomerOrderLines
+                (OrderId, ImportId, ItemNumber, ItemDescription, UnitOfMeasure, DeliveryDate,
                  CalendarWeek, OrderType, RequiredQty, CumulativeQty, NetRequiredQty,
                  InTransitQty, ReceivedQty, LineStatus, Remark)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 order_id,
+                import_id,
                 line_data.get('ItemNumber', ''),
                 line_data.get('ItemDescription', ''),
                 line_data.get('UnitOfMeasure', 'EA'),
@@ -318,16 +329,26 @@ class CustomerOrderService:
             return False
     
     @staticmethod
-    def _save_import_history(conn, file_name: str, order_count: int, line_count: int):
-        """保存导入历史"""
-        try:
-            conn.execute("""
-                INSERT INTO OrderImportHistory 
-                (FileName, OrderCount, LineCount, ImportStatus, ImportedBy)
-                VALUES (?, ?, ?, ?, ?)
-            """, (file_name, order_count, line_count, 'Success', 'System'))
-        except Exception as e:
-            print(f"保存导入历史失败: {e}")
+    def _create_import_history(conn, file_name: str) -> int:
+        """创建导入历史记录并返回ID"""
+        cursor = conn.execute(
+            """INSERT INTO OrderImportHistory (FileName, ImportStatus, ImportedBy)
+                VALUES (?, 'Processing', 'System')""",
+            (file_name,)
+        )
+        return cursor.lastrowid
+
+    @staticmethod
+    def _finalize_import_history(conn, import_id: int, order_count: int, line_count: int,
+                                 status: str, error_msg: str = None):
+        """更新导入历史记录"""
+        conn.execute(
+            """UPDATE OrderImportHistory
+                SET OrderCount = ?, LineCount = ?, ImportStatus = ?, ErrorMessage = ?,
+                    ImportDate = CURRENT_TIMESTAMP
+                WHERE ImportId = ?""",
+            (order_count, line_count, status, error_msg, import_id)
+        )
     
     @staticmethod
     def get_orders_summary(start_date: str = None, end_date: str = None, 

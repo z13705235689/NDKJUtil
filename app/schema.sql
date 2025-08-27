@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS ProductionOrderOperations (
 CREATE TABLE IF NOT EXISTS CustomerOrders (
     OrderId INTEGER PRIMARY KEY AUTOINCREMENT,
     OrderNumber TEXT NOT NULL UNIQUE,           -- 订单号，如E67420
+    ImportId INTEGER,                          -- 导入版本ID
     SupplierCode TEXT,                         -- 供应商代码
     SupplierName TEXT,                         -- 供应商名称
     CustomerCode TEXT,                         -- 客户代码
@@ -328,13 +329,15 @@ CREATE TABLE IF NOT EXISTS CustomerOrders (
     OrderStatus TEXT DEFAULT 'Active',         -- 订单状态
     CreatedDate TEXT DEFAULT CURRENT_TIMESTAMP,
     UpdatedDate TEXT DEFAULT CURRENT_TIMESTAMP,
-    Remark TEXT
+    Remark TEXT,
+    FOREIGN KEY (ImportId) REFERENCES OrderImportHistory(ImportId)
 );
 
 -- 客户订单明细表
 CREATE TABLE IF NOT EXISTS CustomerOrderLines (
     LineId INTEGER PRIMARY KEY AUTOINCREMENT,
     OrderId INTEGER NOT NULL,                  -- 关联订单ID
+    ImportId INTEGER,                          -- 导入版本ID
     ItemNumber TEXT NOT NULL,                  -- 产品型号，如R001H368E
     ItemDescription TEXT,                      -- 产品描述
     UnitOfMeasure TEXT DEFAULT 'EA',          -- 单位
@@ -351,6 +354,7 @@ CREATE TABLE IF NOT EXISTS CustomerOrderLines (
     UpdatedDate TEXT DEFAULT CURRENT_TIMESTAMP,
     Remark TEXT,
     FOREIGN KEY (OrderId) REFERENCES CustomerOrders(OrderId),
+    FOREIGN KEY (ImportId) REFERENCES OrderImportHistory(ImportId),
     UNIQUE(OrderId, ItemNumber, DeliveryDate)
 );
 
@@ -369,8 +373,6 @@ CREATE TABLE IF NOT EXISTS OrderImportHistory (
 -- 创建索引以提高查询性能
 CREATE INDEX IF NOT EXISTS idx_items_itemcode ON Items(ItemCode);
 CREATE INDEX IF NOT EXISTS idx_items_itemtype ON Items(ItemType);
-CREATE INDEX IF NOT EXISTS idx_items_category ON Items(ItemCategory);
-CREATE INDEX IF NOT EXISTS idx_items_specification ON Items(Specification);
 CREATE INDEX IF NOT EXISTS idx_suppliers_code ON Suppliers(SupplierCode);
 CREATE INDEX IF NOT EXISTS idx_workcenters_code ON WorkCenters(WorkCenterCode);
 CREATE INDEX IF NOT EXISTS idx_routing_headers_item ON RoutingHeaders(ItemId);

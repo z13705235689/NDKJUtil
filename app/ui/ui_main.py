@@ -7,6 +7,8 @@ from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QLinearGradie
 from app.ui.materia_management import ItemEditor
 from app.ui.bom_management import BomManagementWidget
 from app.ui.customer_order_management import CustomerOrderManagement
+from app.ui.inventory_management import InventoryManagement
+from app.ui.mrp_viewer import MRPViewer
 
 
 class ModernButton(QPushButton):
@@ -326,7 +328,15 @@ class ContentArea(QFrame):
         # 客户订单管理页面
         self.customer_order_page = self.create_customer_order_page()
         self.stacked_widget.addWidget(self.customer_order_page)
-        
+
+        # 库存管理页面
+        self.inventory_page = self.create_inventory_page()
+        self.stacked_widget.addWidget(self.inventory_page)
+
+        # MRP计算页面
+        self.mrp_page = self.create_mrp_page()
+        self.stacked_widget.addWidget(self.mrp_page)
+
         # 其他页面占位符
         self.placeholder_page = self.create_placeholder_page("功能开发中...")
         self.stacked_widget.addWidget(self.placeholder_page)
@@ -475,11 +485,31 @@ class ContentArea(QFrame):
         layout = QVBoxLayout(page)
         layout.setContentsMargins(16, 16, 16, 16)  # 减小边距
         layout.setSpacing(16)  # 减小间距
-        
+
         # 客户订单管理
         self.customer_order_editor = CustomerOrderManagement()
         layout.addWidget(self.customer_order_editor)
-        
+
+        return page
+
+    def create_inventory_page(self):
+        """创建库存管理页面"""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
+        self.inventory_widget = InventoryManagement()
+        layout.addWidget(self.inventory_widget)
+        return page
+
+    def create_mrp_page(self):
+        """创建MRP计算页面"""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
+        self.mrp_widget = MRPViewer()
+        layout.addWidget(self.mrp_widget)
         return page
 
 
@@ -538,15 +568,15 @@ class MainWindow(QMainWindow):
         elif "客户订单" in page_name:
             self.content_area.switch_to_page(3)  # 客户订单管理页面
         elif "库存管理" in page_name:
-            self.content_area.switch_to_page(4)  # 占位页面
+            self.content_area.switch_to_page(4)  # 库存管理页面
         elif "MRP 计算" in page_name:
-            self.content_area.switch_to_page(4)  # 占位页面
+            self.content_area.switch_to_page(5)  # MRP页面
         elif "自动排产" in page_name:
-            self.content_area.switch_to_page(4)  # 占位页面
+            self.content_area.switch_to_page(6)  # 占位页面
         elif "库存监控" in page_name:
-            self.content_area.switch_to_page(4)  # 占位页面
+            self.content_area.switch_to_page(6)  # 占位页面
         elif "系统设置" in page_name:
-            self.content_area.switch_to_page(4)  # 占位页面
+            self.content_area.switch_to_page(6)  # 占位页面
         else:
             self.content_area.switch_to_page(0)  # 默认欢迎页面
     
