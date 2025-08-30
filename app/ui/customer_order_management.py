@@ -410,18 +410,96 @@ class CustomerOrderManagement(QWidget):
             self.kanban_table.setHorizontalHeaderItem(base_col + i, it)
         self.kanban_table.setHorizontalHeaderItem(headers_count - 1, QTableWidgetItem("Total"))
 
-        # 5) 行集合（按 PN 升序，再 Supplier 升序）
-        keys_all = sorted(groups_all.keys(), key=lambda k: (k[1], k[0]))
+        # 5) 行集合（按产品型号规则排序）
+        def sort_key(item):
+            sup, pn = item
+            if not pn:
+                return (999, 999, sup)  # 空PN排最后
+            
+            # 去掉最后一位字母后缀，获取基础产品型号
+            if len(pn) > 1 and pn[-1].isalpha():
+                base_pn = pn[:-1]  # 去掉最后一位字母
+            else:
+                base_pn = pn
+            
+            # 定义排序优先级（基于完整的基础型号）
+            priority_map = {
+                "R001H368": 1,  # Passat rear double
+                "R001H369": 2,  # Passat rear single
+                "R001P320": 3,  # Tiguan L rear double
+                "R001P313": 4,  # Tiguan L rear single
+                "R001J139": 5,  # A5L rear double
+                "R001J140": 6,  # A5L rear single
+                "R001J141": 7,  # Lavida rear double
+                "R001J142": 8,  # Lavida rear single
+            }
+            
+            # 直接按完整基础型号的优先级排序
+            priority = priority_map.get(base_pn, 999)  # 不匹配的排最后
+            
+            return (priority, sup)
+        
+        keys_all = sorted(groups_all.keys(), key=sort_key)
+        
+        # 调试排序结果
+        print("DEBUG: 排序后的产品型号顺序:")
+        for i, (sup, pn) in enumerate(keys_all):
+            print(f"  {i}: {pn} (供应商: {sup})")
+        
         data_rows = len(keys_all)
         self.kanban_table.setRowCount(data_rows + 1)  # +1 行留给 TOTAL
 
         def project_name(pn: str) -> str:
-            base = (pn or "")[:-1]
-            mp = {"R001H368": "Passat rear double", "R001H369": "Passat rear single",
-                  "R001P320": "Tiguan L rear double", "R001P313": "Tiguan L rear single",
-                  "R001J139": "A5L rear double", "R001J140": "A5L rear single",
-                  "R001J141": "Lavida rear double", "R001J142": "Lavida rear single"}
-            return mp.get(base, "UNKNOWN")
+            if not pn:
+                return "UNKNOWN"
+            
+            # 调试信息
+            print(f"DEBUG: 正在处理产品型号: '{pn}', 类型: {type(pn)}")
+            
+            # 去掉最后一位字母后缀，获取基础产品型号
+            if len(pn) > 1 and pn[-1].isalpha():
+                base_pn = pn[:-1]  # 去掉最后一位字母
+                print(f"DEBUG: 去掉字母后缀: '{pn}' -> '{base_pn}'")
+            else:
+                base_pn = pn
+            
+            # 完整的产品型号映射（基于去掉后缀后的型号）
+            full_pn_map = {
+                "R001H368": "Passat rear double",
+                "R001H369": "Passat rear single",
+                "R001P320": "Tiguan L rear double", 
+                "R001P313": "Tiguan L rear single",
+                "R001J139": "A5L rear double",
+                "R001J140": "A5L rear single",
+                "R001J141": "Lavida rear double",
+                "R001J142": "Lavida rear single"
+            }
+            
+            # 先尝试基础型号匹配
+            if base_pn in full_pn_map:
+                print(f"DEBUG: 基础型号匹配成功: {pn} -> {base_pn} -> {full_pn_map[base_pn]}")
+                return full_pn_map[base_pn]
+            
+            # 如果基础型号匹配失败，尝试去掉最后一位数字匹配
+            if len(base_pn) > 1 and base_pn[-1].isdigit():
+                base = base_pn[:-1]  # 去掉最后一位数字
+                print(f"DEBUG: 尝试基础匹配: '{pn}' -> 基础型号: '{base_pn}' -> 基础: '{base}'")
+            else:
+                base = base_pn
+            
+            base_map = {
+                "R001H36": "Passat",
+                "R001P32": "Tiguan L", 
+                "R001J13": "A5L",
+                "R001J14": "Lavida"
+            }
+            
+            project = base_map.get(base, "UNKNOWN")
+            if project == "UNKNOWN":
+                print(f"警告：产品型号 '{pn}' 没有匹配到项目，默认放到最后")
+            else:
+                print(f"DEBUG: 基础匹配成功: {pn} -> {project}")
+            return project
 
         # 6) 填充数据行
         for row_idx, (sup, pn) in enumerate(keys_all):
@@ -429,9 +507,13 @@ class CustomerOrderManagement(QWidget):
             rd_obj = _safe_parse_date(ri.get("release_date"))
             rd_txt = rd_obj.strftime("%Y/%m/%d") if rd_obj else (ri.get("release_date") or "")
 
+            print(f"DEBUG: 行 {row_idx}: 供应商='{sup}', 产品型号='{pn}'")
+            project_result = project_name(pn)
+            print(f"DEBUG: 行 {row_idx}: 项目名称结果: '{project_result}'")
+
             fixed_vals = [
                 rd_txt, str(ri.get("release_id", "") or ""), pn,
-                "PEMM ASSY", project_name(pn), "Gross Reqs",
+                "PEMM ASSY", project_result, "Gross Reqs",
                 sup, str(_norm_int(ri.get("receipt_qty"), 0)),
                 str(_norm_int(ri.get("cum_received"), 0)),
             ]
@@ -517,6 +599,267 @@ class CustomerOrderManagement(QWidget):
                 f = it.font(); f.setBold(True); it.setFont(f)
                 it.setBackground(Qt.transparent)  # 保持透明
 
+    def _get_release_cw_from_kanban(self) -> Optional[dict]:
+        """从看板数据中获取Release Date对应的CW信息"""
+        try:
+            if not hasattr(self, 'kanban_table') or self.kanban_table.rowCount() == 0:
+                print("DEBUG: 看板表格为空或不存在")
+                return None
+            
+            print(f"DEBUG: 看板表格行数: {self.kanban_table.rowCount()}")
+            
+            # 查找第一行数据中的Release Date
+            for row in range(self.kanban_table.rowCount()):
+                release_date_item = self.kanban_table.item(row, 0)  # Release Date列
+                if release_date_item and release_date_item.text().strip():
+                    release_date_text = release_date_item.text().strip()
+                    print(f"DEBUG: 行 {row} Release Date: '{release_date_text}'")
+                    
+                    if release_date_text and release_date_text != "TOTAL":
+                        # 解析Release Date
+                        try:
+                            # 尝试解析日期格式 YYYY/MM/DD
+                            date_obj = datetime.strptime(release_date_text, "%Y/%m/%d")
+                            # 计算对应的CW
+                            week_num = date_obj.isocalendar()[1]
+                            year = date_obj.year
+                            print(f"DEBUG: 成功解析日期: {release_date_text} -> CW{week_num:02d}-{year}")
+                            return {"week": week_num, "year": year}
+                        except ValueError:
+                            # 如果解析失败，尝试其他格式
+                            try:
+                                date_obj = datetime.strptime(release_date_text, "%Y-%m-%d")
+                                week_num = date_obj.isocalendar()[1]
+                                year = date_obj.year
+                                print(f"DEBUG: 成功解析日期: {release_date_text} -> CW{week_num:02d}-{year}")
+                                return {"week": week_num, "year": year}
+                            except ValueError:
+                                print(f"DEBUG: 无法解析日期格式: {release_date_text}")
+                                continue
+            
+            print("DEBUG: 未找到有效的Release Date")
+            return None
+        except Exception as e:
+            print(f"获取Release Date CW信息失败: {e}")
+            return None
+
+    def export_kanban_to_excel(self):
+        """导出看板数据到Excel"""
+        if not hasattr(self, 'kanban_table') or self.kanban_table.rowCount() == 0:
+            QMessageBox.warning(self, "提示", "请先生成看板数据")
+            return
+
+                # 获取Release Date对应的CW信息用于文件名
+        release_cw = self._get_release_cw_from_kanban()
+        if release_cw:
+            default_filename = f"CW{release_cw['week']:02d}-{release_cw['year']}.xlsx"
+        else:
+            default_filename = f"客户订单看板_{QDate.currentDate().toString('yyyyMMdd')}.xlsx"
+        
+        # 选择保存路径
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, 
+            "导出看板Excel", 
+            default_filename,
+            "Excel Files (*.xlsx)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            self._export_kanban_excel(file_path)
+            QMessageBox.information(self, "导出成功", f"文件已保存到：\n{file_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "导出失败", f"导出过程中发生错误：\n{str(e)}")
+
+    def _export_kanban_excel(self, file_path: str):
+        """导出看板数据到Excel文件的具体实现"""
+        # 创建工作簿和工作表
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        
+        # 获取Release Date对应的CW信息
+        release_cw = self._get_release_cw_from_kanban()
+        print(f"DEBUG: 导出时获取到的CW信息: {release_cw}")
+        
+        if release_cw:
+            # 设置工作表名称为CW几
+            ws_title = f"CW{release_cw['week']:02d}"
+            ws.title = ws_title
+            print(f"DEBUG: 设置工作表名称为: {ws_title}")
+        else:
+            ws.title = "客户订单看板"
+            print("DEBUG: 未获取到CW信息，使用默认工作表名称: 客户订单看板")
+
+        # 获取当前看板数据
+        table = self.kanban_table
+        rows_count = table.rowCount()
+        cols_count = table.columnCount()
+
+        if rows_count == 0 or cols_count == 0:
+            raise ValueError("看板数据为空")
+
+        # 定义样式
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        # 获取表头信息
+        fixed_headers = []
+        week_headers = []
+        for col in range(cols_count):
+            header_item = table.horizontalHeaderItem(col)
+            if header_item:
+                header_text = header_item.text()
+                if col < 9:  # 前9列是固定列
+                    fixed_headers.append(header_text)
+                else:
+                    week_headers.append(header_text)
+
+        # 写入表头（两行）
+        # 第一行：固定列标题 + 周标题
+        first_row = fixed_headers + week_headers
+        ws.append(first_row)
+
+        # 第二行：空行 + 日期
+        second_row = [""] * len(fixed_headers)
+        for header in week_headers:
+            if "CW" in header:
+                # 从表头数据中获取日期
+                header_item = table.horizontalHeaderItem(len(fixed_headers) + len(second_row))
+                if header_item:
+                    date_data = header_item.data(Qt.UserRole)
+                    if date_data:
+                        try:
+                            date_obj = datetime.strptime(date_data, "%Y/%m/%d")
+                            second_row.append(date_obj.strftime("%m/%d"))
+                        except:
+                            second_row.append("")
+                    else:
+                        second_row.append("")
+                else:
+                    second_row.append("")
+            else:
+                second_row.append("")
+
+        ws.append(second_row)
+
+        # 写入数据行
+        for row in range(rows_count):
+            row_data = []
+            for col in range(cols_count):
+                item = table.item(row, col)
+                if item:
+                    # 尝试转换为数字
+                    try:
+                        value = int(float(item.text())) if item.text().strip() else 0
+                    except:
+                        value = item.text() or ""
+                    row_data.append(value)
+                else:
+                    row_data.append("")
+            ws.append(row_data)
+
+        # 工作表标题已在前面设置，这里不需要重复设置
+
+        # ====== 样式设置 ======
+
+        # 1) 列宽设置
+        tight_widths = [11, 14, 12, 10, 16, 10, 14, 12, 12]  # 对应9个固定列
+        for i, w in enumerate(tight_widths, start=1):
+            if i <= len(fixed_headers):
+                ws.column_dimensions[get_column_letter(i)].width = w
+
+        # 周列宽度
+        for ci in range(len(fixed_headers) + 1, ws.max_column + 1):
+            ws.column_dimensions[get_column_letter(ci)].width = 9.0
+
+        # 2) 冻结窗格：固定列 + 两行表头
+        ws.freeze_panes = get_column_letter(len(fixed_headers) + 1) + "3"
+
+        # 3) 表头样式
+        for cell in ws[1] + ws[2]:
+            cell.font = Font(name="Arial", bold=True)
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = thin_border
+
+        # 4) 数据行样式
+        first_data_row = 3
+        for r in range(first_data_row, ws.max_row + 1):
+            for c in range(1, ws.max_column + 1):
+                cell = ws.cell(r, c)
+                if c <= len(fixed_headers):
+                    # 固定列：居中对齐，自动换行
+                    cell.alignment = Alignment(
+                        horizontal="center", vertical="center",
+                        wrap_text=True, shrink_to_fit=True
+                    )
+                else:
+                    # 数字列：居中对齐
+                    cell.alignment = Alignment(
+                        horizontal="center", vertical="center",
+                        wrap_text=False, shrink_to_fit=True
+                    )
+
+                # 设置字体
+                cell.font = Font(name="Arial")
+
+                # 设置边框（所有有内容的单元格都有边框）
+                if cell.value not in (None, "", 0):
+                    cell.border = thin_border
+                else:
+                    # 对于空单元格，也设置边框以保持表格完整性
+                    cell.border = thin_border
+
+        # 5) 数字格式设置
+        for r in ws.iter_rows(min_row=first_data_row, max_row=ws.max_row,
+                              min_col=len(fixed_headers) + 1, max_col=ws.max_column):
+            for c in r:
+                if isinstance(c.value, (int, float)) and c.value != 0:
+                    c.number_format = "0"
+
+        # 6) F/P 着色（从表格背景色获取）
+        fill_f = PatternFill("solid", fgColor="C6E0B4")  # F 绿色
+        fill_p = PatternFill("solid", fgColor="FFF2CC")  # P 黄色
+
+        for r in range(rows_count):
+            for c in range(len(fixed_headers), cols_count):
+                table_item = table.item(r, c)
+                if table_item and table_item.background().color().isValid():
+                    bg_color = table_item.background().color()
+                    excel_cell = ws.cell(r + first_data_row, c + 1)
+
+                    # 根据背景色判断F/P
+                    if bg_color.name() == "#c6e0b4":  # 绿色 - F
+                        excel_cell.fill = fill_f
+                    elif bg_color.name() == "#fff2cc":  # 黄色 - P
+                        excel_cell.fill = fill_p
+
+        # 7) 合计列样式
+        sum_fill = PatternFill("solid", fgColor="E2F0D9")
+        for c in range(len(fixed_headers) + 1, ws.max_column + 1):
+            col_letter = get_column_letter(c)
+            if "合计" in ws.cell(1, c).value or "Total" in ws.cell(1, c).value:
+                for r in range(1, ws.max_row + 1):
+                    ws.cell(r, c).fill = sum_fill
+                # 数据行加粗
+                for r in range(first_data_row, ws.max_row + 1):
+                    ws.cell(r, c).font = Font(name="Arial", bold=True)
+
+        # 8) TOTAL行样式
+        total_row = ws.max_row
+        ws.cell(total_row, 1).font = Font(name="Arial", bold=True)
+        for c in range(1, ws.max_column + 1):
+            ws.cell(total_row, c).font = Font(name="Arial", bold=True)
+            ws.cell(total_row, c).border = thin_border
+
+        # 保存文件
+        wb.save(file_path)
+        wb.close()
     # ===================== 订单明细页 =====================
     def create_order_details_tab(self):
         details_widget = QWidget()
@@ -771,9 +1114,36 @@ class CustomerOrderManagement(QWidget):
         if not ok:
             QMessageBox.warning(self, "导入失败", msg or "未知错误")
         else:
-            QMessageBox.information(self, "导入成功", msg)
+            # 检查是否有不匹配的产品型号
+            unmatched_items = self._check_unmatched_items(import_id)
+            if unmatched_items:
+                warning_msg = f"导入成功！\n\n发现以下产品型号没有匹配到项目，将默认放到最后：\n{unmatched_items}\n\n这些产品将按照默认规则排序。"
+                QMessageBox.information(self, "导入成功（含警告）", warning_msg)
+            else:
+                QMessageBox.information(self, "导入成功", msg)
         # 刷新
         self.refresh_data()
+
+    def _check_unmatched_items(self, import_id: int) -> str:
+        """检查导入数据中是否有不匹配的产品型号"""
+        try:
+            data = CustomerOrderService.get_order_lines_by_import_version(import_id)
+            unmatched = set()
+            priority_bases = {"R001H36", "R001P32", "R001J13", "R001J14"}
+            
+            for line in data or []:
+                pn = line.get("ItemNumber", "")
+                if pn and len(pn) > 1:
+                    base = pn[:-1]
+                    if base not in priority_bases:
+                        unmatched.add(pn)
+            
+            if unmatched:
+                return "\n".join(sorted(unmatched))
+            return ""
+        except Exception as e:
+            print(f"检查不匹配项目失败: {e}")
+            return ""
 
     def show_version_management(self):
         dlg = VersionManagementDialog(self)
@@ -845,3 +1215,5 @@ class VersionManagementDialog(QDialog):
             return
         QMessageBox.information(self, "删除成功", f"版本 {import_id} 已删除。")
         self.load()
+
+
