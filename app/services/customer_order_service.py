@@ -1,715 +1,437 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-客户订单服务类
+客户订单服务类（含 OrderYear 修复）
+- TXT 解析遵循 NDLUtil 逻辑：头字段行内匹配；Item 切换继承 header_*；计划行支持整数/小数
+- 导入时 CustomerOrders 必填列 OrderYear 由 DeliveryDate 推算写入
+- 查询接口与 UI 适配：get_order_lines_by_import_version 不再引用不存在列
 """
 
-import re
-from datetime import datetime, timedelta
+import os
+from datetime import datetime
 from typing import List, Dict, Tuple, Optional
-from app.db import DatabaseManager
+from collections import defaultdict
+
+from app.db import get_conn
+
 
 class CustomerOrderService:
-    """客户订单服务类"""
-    
+    # ------------------------- 工具 -------------------------
+    @staticmethod
+    def _parse_mmddyy_to_iso(s: str) -> str:
+        """把 08/21/25 转为 2025-08-21（<2000 年补 +2000）"""
+        dt = datetime.strptime(s, "%m/%d/%y")
+        if dt.year < 2000:
+            dt = dt.replace(year=dt.year + 2000)
+        return dt.strftime("%Y-%m-%d")
+
+    # ------------------------- 解析 TXT -------------------------
     @staticmethod
     def parse_txt_order_file(file_path: str) -> Tuple[List[Dict], List[Dict]]:
         """
-        解析TXT格式的订单文件
-        
-        Args:
-            file_path: 文件路径
-            
-        Returns:
-            Tuple[List[Dict], List[Dict]]: (订单主表数据, 订单明细数据)
+        返回 (orders, order_lines)
+
+        orders: 每个 (Supplier, Item) 的头信息（ReleaseDate/ReleaseId/ReceiptQty/CumReceived...）
+        order_lines: 明细行（按日期、F/P、数量）
         """
-        orders = []
-        order_lines = []
-        
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
-                content = file.read()
-            
-            # 按订单分割（每个订单以"SUPPLIER SCHEDULE / MATERIAL RELEASE"开始）
-            order_sections = content.split("SUPPLIER SCHEDULE / MATERIAL RELEASE")
-            
-            for section in order_sections[1:]:  # 跳过第一个空部分
-                if not section.strip():
-                    continue
-                    
-                # 解析订单主表信息
-                order_info = CustomerOrderService._parse_order_header(section)
-                if order_info:
-                    orders.append(order_info)
-                    
-                    # 解析订单明细
-                    lines = CustomerOrderService._parse_order_lines(section, order_info['OrderNumber'])
-                    order_lines.extend(lines)
-            
-            return orders, order_lines
-            
-        except Exception as e:
-            raise Exception(f"解析订单文件失败: {str(e)}")
-    
-    @staticmethod
-    def _parse_order_header(section: str) -> Optional[Dict]:
-        """解析订单主表信息"""
-        try:
-            order_info = {}
-            
-            # 提取订单号
-            po_match = re.search(r'Purchase Order:\s*(\w+)', section)
-            if po_match:
-                order_info['OrderNumber'] = po_match.group(1)
-            else:
-                return None
-            
-            # 提取供应商信息
-            supplier_match = re.search(r'Supplier:\s*(\d+)\s*\n\s*([^\n]+)', section)
-            if supplier_match:
-                order_info['SupplierCode'] = supplier_match.group(1)
-                order_info['SupplierName'] = supplier_match.group(2).strip()
-            
-            # 提取客户信息
-            customer_match = re.search(r'Ship-To:\s*(\d+)\s*\n\s*([^\n]+)', section)
-            if customer_match:
-                order_info['CustomerCode'] = customer_match.group(1)
-                order_info['CustomerName'] = customer_match.group(2).strip()
-            
-            # 提取发布日期
-            release_match = re.search(r'Release Date:\s*(\d{2}/\d{2}/\d{2})', section)
-            if release_match:
-                try:
-                    rd = datetime.strptime(release_match.group(1), '%m/%d/%y')
-                    if rd.year < 2000:
-                        rd = rd.replace(year=rd.year + 2000)
-                    order_info['ReleaseDate'] = rd.strftime('%Y-%m-%d')
-                except Exception:
-                    order_info['ReleaseDate'] = release_match.group(1)
-            
-            # 提取采购员
-            buyer_match = re.search(r'Buyer:\s*(\w+)', section)
-            if buyer_match:
-                order_info['Buyer'] = buyer_match.group(1)
-            
-            # 提取收货地址
-            ship_to_match = re.search(r'No\.1-9 Gangcheng Avenue\s*\n\s*([^\n]+)', section)
-            if ship_to_match:
-                order_info['ShipToAddress'] = ship_to_match.group(1).strip()
-            
-            return order_info
-            
-        except Exception as e:
-            print(f"解析订单主表失败: {e}")
-            return None
-    
-    @staticmethod
-    def _parse_order_lines(section: str, order_number: str) -> List[Dict]:
-        """解析订单明细信息"""
-        lines = []
-        
-        try:
-            # 提取产品信息
-            item_match = re.search(r'Item Number:\s*(\w+)\s*UM:\s*(\w+)\s*In Transit Qty:\s*([\d.]+)', section)
-            if not item_match:
-                return lines
-            
-            item_number = item_match.group(1)
-            unit_of_measure = item_match.group(2)
-            in_transit_qty = float(item_match.group(3))
-            
-            # 提取产品描述
-            desc_match = re.search(r'Item Number:\s*\w+\s*UM:\s*\w+\s*In Transit Qty:\s*[\d.]+[^\n]*\n\s*([^\n]+)', section)
-            item_description = desc_match.group(1).strip() if desc_match else ""
-            
-            # 提取累计收货数量
-            cum_received_match = re.search(r'Cum Received:\s*([\d.]+)', section)
-            cum_received = float(cum_received_match.group(1)) if cum_received_match else 0.0
-            
-            # 提取交货明细
-            delivery_pattern = r'(\d{2}/\d{2}/\d{2})\s+([FP])\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)'
-            delivery_matches = re.findall(delivery_pattern, section)
-            
-            for delivery_match in delivery_matches:
-                delivery_date_raw = delivery_match[0]
-                order_type = delivery_match[1]
-                required_qty = float(delivery_match[2].replace(',', ''))
-                cumulative_qty = float(delivery_match[3].replace(',', ''))
-                net_required_qty = float(delivery_match[4].replace(',', ''))
+        from pathlib import Path
+        import re
 
-                # 转换日期并计算日历周
-                try:
-                    date_obj = datetime.strptime(delivery_date_raw, '%m/%d/%y')
-                    if date_obj.year < 2000:
-                        date_obj = date_obj.replace(year=date_obj.year + 2000)
-                    delivery_date = date_obj.strftime('%Y-%m-%d')
-                    calendar_week = f"CW{date_obj.isocalendar()[1]:02d}"
-                except Exception:
-                    delivery_date = delivery_date_raw
-                    calendar_week = ""
+        RE_SUPPLIER  = re.compile(r"^\s*Supplier:\s*([A-Za-z0-9\-]+)")
+        RE_SHIPTO    = re.compile(r"^\s*Ship-To:")
+        RE_ITEM      = re.compile(r"^\s*Item Number:\s*([A-Z0-9\-]+)", re.I)
 
-                line_data = {
-                    'OrderNumber': order_number,
-                    'ItemNumber': item_number,
-                    'ItemDescription': item_description,
-                    'UnitOfMeasure': unit_of_measure,
-                    'DeliveryDate': delivery_date,
-                    'CalendarWeek': calendar_week,
-                    'OrderType': order_type,
-                    'RequiredQty': required_qty,
-                    'CumulativeQty': cumulative_qty,
-                    'NetRequiredQty': net_required_qty,
-                    'InTransitQty': in_transit_qty,
-                    'ReceivedQty': cum_received
-                }
+        RE_PO        = re.compile(r"Purchase Order:\s*([A-Z0-9\-]+)", re.I)
+        RE_RELID     = re.compile(r"Release ID:\s*([\w\-]+)", re.I)
+        RE_RELD      = re.compile(r"Release Date:\s*([0-9/]+)", re.I)
+        # 数量支持整数或小数
+        RE_RECEIPT_Q = re.compile(r"Receipt Quantity:\s*([0-9][0-9,]*(?:\.\d+)?)", re.I)
+        RE_CUM_RECV  = re.compile(r"Cum Received:\s*([0-9][0-9,]*(?:\.\d+)?)", re.I)
 
-                lines.append(line_data)
-            
-            return lines
-            
-        except Exception as e:
-            print(f"解析订单明细失败: {e}")
-            return lines
-    
-    @staticmethod
-    def import_orders_from_file(file_path: str, file_name: str) -> Dict:
-        """
-        从文件导入订单数据
-        
-        Args:
-            file_path: 文件路径
-            file_name: 文件名
-            
-        Returns:
-            Dict: 导入结果
-        """
-        try:
-            # 解析文件
-            orders, order_lines = CustomerOrderService.parse_txt_order_file(file_path)
-            
-            if not orders:
-                return {
-                    'success': False,
-                    'message': '未找到有效的订单数据',
-                    'order_count': 0,
-                    'line_count': 0
-                }
-            
-            # 保存到数据库
-            db_manager = DatabaseManager()
-            with db_manager.get_conn() as conn:
-                conn.execute("BEGIN TRANSACTION")
+        # 计划行：日期 + F/P + 数量
+        RE_LINE      = re.compile(
+            r"^\s*(?:Daily|Weekly|Monthly)?\s*([0-9]{2}/[0-9]{2}/[0-9]{2})\s+([FPfp])\s+([0-9][0-9,]*(?:\.\d+)?)(?:\s+.*)?$"
+        )
 
-                try:
-                    # 创建导入历史记录，获取版本ID
-                    import_id = CustomerOrderService._create_import_history(conn, file_name)
+        def mmddyy_to_dt(s: str) -> datetime:
+            dt = datetime.strptime(s, "%m/%d/%y")
+            if dt.year < 2000:
+                dt = dt.replace(year=dt.year + 2000)
+            return dt
 
-                    # 保存订单主表
-                    saved_orders = []
-                    for order in orders:
-                        order_id = CustomerOrderService._save_order_header(conn, order, import_id)
-                        if order_id:
-                            saved_orders.append((order_id, order['OrderNumber']))
+        orders: List[Dict] = []
+        order_lines: List[Dict] = []
 
-                    # 保存订单明细
-                    saved_lines = 0
-                    for line in order_lines:
-                        order_id = None
-                        for oid, onum in saved_orders:
-                            if onum == line['OrderNumber']:
-                                order_id = oid
-                                break
-                        if order_id:
-                            if CustomerOrderService._save_order_line(conn, order_id, line, import_id):
-                                saved_lines += 1
+        raw = Path(file_path).read_text(encoding="utf-8", errors="ignore")
+        lines = raw.splitlines()
 
-                    # 更新导入历史
-                    CustomerOrderService._finalize_import_history(
-                        conn, import_id, len(saved_orders), saved_lines, 'Success'
-                    )
+        sup_code = sup_name = None
+        item = None
 
-                    conn.execute("COMMIT")
-                    return {
-                        'success': True,
-                        'message': f'成功导入 {len(saved_orders)} 个订单，{saved_lines} 条明细',
-                        'order_count': len(saved_orders),
-                        'line_count': saved_lines,
-                        'import_id': import_id
-                    }
+        # header_*: Supplier 段落的头字段；后续 Item 出现时继承
+        header_po = header_rel_id = header_rel_date = None
+        header_receipt_qty = header_cum_received = None
 
-                except Exception as e:
-                    conn.execute("ROLLBACK")
-                    try:
-                        CustomerOrderService._finalize_import_history(
-                            conn, import_id, 0, 0, 'Failed', str(e)
-                        )
-                    except Exception:
-                        pass
-                    raise e
-                    
-        except Exception as e:
-            return {
-                'success': False,
-                'message': f'导入失败: {str(e)}',
-                'order_count': 0,
-                'line_count': 0
+        # 当前 Item 的头字段（默认继承 header_*，若遇到新值则覆盖）
+        po = rel_id = rel_date = None
+        receipt_qty = cum_received = None
+
+        capture_sup_name = False
+
+        def flush_order_header():
+            """把当前 supplier+item 的头信息写入 orders"""
+            nonlocal po, rel_id, rel_date, receipt_qty, cum_received
+            if not (sup_code and item):
+                return
+            rec = {
+                "OrderNumber": f"{sup_code}_{item}",
+                "SupplierCode": sup_code,
+                "SupplierName": sup_name or "",
+                "CustomerCode": "",
+                "CustomerName": "",
+                "ReleaseDate": "",
+                "ReleaseId": rel_id or "",
+                "Buyer": "",
+                "ShipToAddress": "",
+                "ReceiptQuantity": 0.0,
+                "CumReceived": 0.0,
+                "Project": "",
+                "PurchaseOrder": po or "",
             }
-    
+            if rel_date:
+                try:
+                    rec["ReleaseDate"] = CustomerOrderService._parse_mmddyy_to_iso(rel_date)
+                except Exception:
+                    rec["ReleaseDate"] = rel_date  # 兜底存原文
+            if receipt_qty is not None:
+                rec["ReceiptQuantity"] = float(str(receipt_qty).replace(",", ""))
+            if cum_received is not None:
+                rec["CumReceived"] = float(str(cum_received).replace(",", ""))
+            orders.append(rec)
+
+        for ln in lines:
+            # Supplier 行
+            m = RE_SUPPLIER.search(ln)
+            if m:
+                flush_order_header()
+                sup_code = m.group(1)
+                sup_name = None
+                capture_sup_name = True
+                # 重置 header_* 与当前 item 值
+                header_po = header_rel_id = header_rel_date = None
+                header_receipt_qty = header_cum_received = None
+                item = None
+                po = rel_id = rel_date = None
+                receipt_qty = cum_received = None
+                continue
+
+            # Supplier 名称：在 Supplier: 行之后直到 Ship-To: 之前的第一行非空白
+            if capture_sup_name:
+                if RE_SHIPTO.search(ln):
+                    capture_sup_name = False
+                    continue
+                t = ln.strip()
+                if t:
+                    sup_name = sup_name or t
+                    capture_sup_name = False
+                continue
+
+            # 头字段（同一行可多字段同时出现，不使用 continue）
+            m = RE_PO.search(ln)
+            if m:
+                if item:  po = m.group(1)
+                else:     header_po = m.group(1)
+            m = RE_RELID.search(ln)
+            if m:
+                if item:  rel_id = m.group(1)
+                else:     header_rel_id = m.group(1)
+            m = RE_RELD.search(ln)
+            if m:
+                if item:  rel_date = m.group(1)
+                else:     header_rel_date = m.group(1)
+            m = RE_RECEIPT_Q.search(ln)
+            if m:
+                if item:  receipt_qty = m.group(1)
+                else:     header_receipt_qty = m.group(1)
+            m = RE_CUM_RECV.search(ln)
+            if m:
+                if item:  cum_received = m.group(1)
+                else:     header_cum_received = m.group(1)
+
+            # Item Number 行：切换当前 PN，并继承 header_* 值
+            m = RE_ITEM.search(ln)
+            if m:
+                flush_order_header()
+                item = m.group(1)
+                po = header_po
+                rel_id = header_rel_id
+                rel_date = header_rel_date
+                receipt_qty = header_receipt_qty
+                cum_received = header_cum_received
+                continue
+
+            # 计划行（日期 + FP + 数量）
+            m = RE_LINE.match(ln)
+            if m and sup_code and item:
+                d_s, fp, qty_s = m.groups()
+                dt = mmddyy_to_dt(d_s)
+                qty = float(qty_s.replace(",", ""))
+                order_lines.append({
+                    "OrderNumber": f"{sup_code}_{item}",
+                    "ItemNumber": item,
+                    "ItemDescription": "PEMM ASSY",
+                    "UnitOfMeasure": "EA",
+                    "DeliveryDate": dt.strftime("%Y-%m-%d"),
+                    "CalendarWeek": f"CW{dt.isocalendar()[1]:02d}",
+                    "OrderType": fp.upper() if fp.upper() in ("F", "P") else "P",
+                    "RequiredQty": qty,
+                    "CumulativeQty": qty,
+                    "NetRequiredQty": qty,
+                    "InTransitQty": 0,
+                    "ReceivedQty": 0,
+                    "LineStatus": "Active",
+                    "SupplierCode": sup_code,
+                    "SupplierName": sup_name or "",
+                    "ReleaseId": rel_id or "",
+                    "ReleaseDate": (CustomerOrderService._parse_mmddyy_to_iso(rel_date) if rel_date else ""),
+                    "PurchaseOrder": po or "",
+                    "ReceiptQuantity": float(str(receipt_qty or "0").replace(",", "")),
+                    "CumReceived": float(str(cum_received or "0").replace(",", "")),
+                })
+
+        # 收尾：最后一个 item 的头信息落盘
+        flush_order_header()
+        return orders, order_lines
+
+    # ------------------------- 导入/删除 -------------------------
     @staticmethod
-    def _save_order_header(conn, order_data: Dict, import_id: int) -> Optional[int]:
-        """保存订单主表"""
+    def import_orders_from_txt(file_path: str, import_user: str = "System") -> Tuple[bool, str, int]:
+        """导入 TXT 到 DB；保证 CustomerOrders.OrderYear（NOT NULL）被正确写入。"""
         try:
-            cursor = conn.execute("""
-                INSERT OR REPLACE INTO CustomerOrders
-                (OrderNumber, ImportId, SupplierCode, SupplierName, CustomerCode, CustomerName,
-                 ReleaseDate, Buyer, ShipToAddress, OrderStatus, Remark)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                order_data.get('OrderNumber', ''),
-                import_id,
-                order_data.get('SupplierCode', ''),
-                order_data.get('SupplierName', ''),
-                order_data.get('CustomerCode', ''),
-                order_data.get('CustomerName', ''),
-                order_data.get('ReleaseDate', ''),
-                order_data.get('Buyer', ''),
-                order_data.get('ShipToAddress', ''),
-                'Active',
-                f'从文件导入 - {order_data.get("ReleaseDate", "")}'
-            ))
-            
-            # 获取插入的ID
-            if cursor.lastrowid:
-                return cursor.lastrowid
-            else:
-                # 如果是REPLACE，需要查询ID
-                cursor = conn.execute(
-                    "SELECT OrderId FROM CustomerOrders WHERE OrderNumber = ?",
-                    (order_data['OrderNumber'],)
-                )
-                result = cursor.fetchone()
-                return result[0] if result else None
-                
+            orders, order_lines = CustomerOrderService.parse_txt_order_file(file_path)
+            if not orders:
+                return False, "没有解析到有效的订单数据", 0
+
+            file_name = os.path.basename(file_path)
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            with get_conn() as conn:
+                # 新建导入历史
+                cur = conn.execute("""
+                    INSERT INTO OrderImportHistory
+                    (FileName, ImportDate, OrderCount, LineCount, ImportStatus, ImportedBy)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (file_name, now, len(orders), len(order_lines), 'Success', import_user))
+                import_id = cur.lastrowid
+
+                # 以 (Supplier, Item) 维度聚合
+                groups: Dict[Tuple[str, str], Dict] = {}
+                for ln in order_lines:
+                    key = (ln["SupplierCode"], ln["ItemNumber"])
+                    g = groups.setdefault(key, {"order_info": {}, "weeks": set(), "lines": []})
+                    g["weeks"].add(ln["CalendarWeek"])
+                    g["lines"].append(ln)
+
+                order_map = {o["OrderNumber"]: o for o in orders}
+                for (sup, item), g in groups.items():
+                    g["order_info"] = order_map.get(f"{sup}_{item}", {})
+
+                # 写入头表 + 行表；头表按 (Supplier, CW, OrderYear) 唯一
+                for (sup, item), g in groups.items():
+                    for cw in sorted(g["weeks"]):
+                        # 计算 OrderYear：取该周任意一条 DeliveryDate 的 ISO 年
+                        order_year = None
+                        for ln in g["lines"]:
+                            if ln["CalendarWeek"] == cw:
+                                d = datetime.strptime(ln["DeliveryDate"], "%Y-%m-%d").date()
+                                order_year = d.isocalendar()[0]
+                                break
+                        if order_year is None:
+                            order_year = datetime.now().year
+
+                        # 是否已存在
+                        row = conn.execute("""
+                            SELECT OrderId FROM CustomerOrders
+                            WHERE ImportId = ? AND SupplierCode = ? AND CalendarWeek = ? AND OrderYear = ?
+                        """, (import_id, sup, cw, order_year)).fetchone()
+
+                        if row:
+                            order_id = row["OrderId"]
+                        else:
+                            oi = g["order_info"]
+                            cur = conn.execute("""
+                                INSERT INTO CustomerOrders
+                                (OrderNumber, ImportId, CalendarWeek, OrderYear,
+                                 SupplierCode, SupplierName,
+                                 CustomerCode, CustomerName,
+                                 ReleaseDate, ReleaseId, Buyer, ShipToAddress,
+                                 ReceiptQuantity, CumReceived, Project, OrderStatus,
+                                 CreatedDate, UpdatedDate)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                f"{sup}_{item}_{cw}",
+                                import_id, cw, order_year,
+                                sup, oi.get("SupplierName", ""),
+                                oi.get("CustomerCode", ""), oi.get("CustomerName", ""),
+                                oi.get("ReleaseDate", ""), oi.get("ReleaseId", ""),
+                                oi.get("Buyer", ""), oi.get("ShipToAddress", ""),
+                                oi.get("ReceiptQuantity", 0.0), oi.get("CumReceived", 0.0),
+                                oi.get("Project", ""), "Active",
+                                now, now
+                            ))
+                            order_id = cur.lastrowid
+
+                        # 行表：仅写当前 CW 的行
+                        for ln in g["lines"]:
+                            if ln["CalendarWeek"] != cw:
+                                continue
+                            exists = conn.execute("""
+                                SELECT LineId FROM CustomerOrderLines
+                                WHERE OrderId = ? AND ItemNumber = ? AND DeliveryDate = ?
+                            """, (order_id, ln["ItemNumber"], ln["DeliveryDate"])).fetchone()
+                            if not exists:
+                                conn.execute("""
+                                    INSERT INTO CustomerOrderLines
+                                    (OrderId, ImportId, ItemNumber, ItemDescription, UnitOfMeasure,
+                                     DeliveryDate, CalendarWeek, OrderType, RequiredQty, CumulativeQty,
+                                     NetRequiredQty, InTransitQty, ReceivedQty, LineStatus,
+                                     CreatedDate, UpdatedDate)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    order_id, import_id, ln["ItemNumber"], ln["ItemDescription"], ln["UnitOfMeasure"],
+                                    ln["DeliveryDate"], ln["CalendarWeek"], ln["OrderType"], ln["RequiredQty"],
+                                    ln["CumulativeQty"], ln["NetRequiredQty"], ln["InTransitQty"], ln["ReceivedQty"],
+                                    ln["LineStatus"], now, now
+                                ))
+                conn.commit()
+
+            return True, f"成功导入 {len(orders)} 个订单，{len(order_lines)} 行明细", import_id
         except Exception as e:
-            print(f"保存订单主表失败: {e}")
-            return None
-    
-    @staticmethod
-    def _save_order_line(conn, order_id: int, line_data: Dict, import_id: int) -> bool:
-        """保存订单明细"""
-        try:
-            conn.execute("""
-                INSERT OR REPLACE INTO CustomerOrderLines
-                (OrderId, ImportId, ItemNumber, ItemDescription, UnitOfMeasure, DeliveryDate,
-                 CalendarWeek, OrderType, RequiredQty, CumulativeQty, NetRequiredQty,
-                 InTransitQty, ReceivedQty, LineStatus, Remark)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                order_id,
-                import_id,
-                line_data.get('ItemNumber', ''),
-                line_data.get('ItemDescription', ''),
-                line_data.get('UnitOfMeasure', 'EA'),
-                line_data.get('DeliveryDate', ''),
-                line_data.get('CalendarWeek', ''),
-                line_data.get('OrderType', ''),
-                line_data.get('RequiredQty', 0),
-                line_data.get('CumulativeQty', 0),
-                line_data.get('NetRequiredQty', 0),
-                line_data.get('InTransitQty', 0),
-                line_data.get('ReceivedQty', 0),
-                'Active',
-                f'从文件导入 - {line_data.get("DeliveryDate", "")}'
-            ))
-            
-            return True
-            
-        except Exception as e:
-            print(f"保存订单明细失败: {e}")
-            return False
-    
-    @staticmethod
-    def _create_import_history(conn, file_name: str) -> int:
-        """创建导入历史记录并返回ID"""
-        cursor = conn.execute(
-            """INSERT INTO OrderImportHistory (FileName, ImportStatus, ImportedBy)
-                VALUES (?, 'Processing', 'System')""",
-            (file_name,)
-        )
-        return cursor.lastrowid
+            return False, f"导入失败: {e}", 0
 
     @staticmethod
-    def _finalize_import_history(conn, import_id: int, order_count: int, line_count: int,
-                                 status: str, error_msg: str = None):
-        """更新导入历史记录"""
-        conn.execute(
-            """UPDATE OrderImportHistory
-                SET OrderCount = ?, LineCount = ?, ImportStatus = ?, ErrorMessage = ?,
-                    ImportDate = CURRENT_TIMESTAMP
-                WHERE ImportId = ?""",
-            (order_count, line_count, status, error_msg, import_id)
-        )
-    
-    @staticmethod
-    def get_orders_summary(start_date: str = None, end_date: str = None, 
-                          order_type: str = None, item_number: str = None) -> List[Dict]:
-        """
-        获取订单汇总信息（看板视图）
-        
-        Args:
-            start_date: 开始日期 (YYYY-MM-DD)
-            end_date: 结束日期 (YYYY-MM-DD)
-            order_type: 订单类型 (F/P/All)
-            item_number: 产品型号
-            
-        Returns:
-            List[Dict]: 汇总数据
-        """
+    def delete_import(import_id: int) -> Tuple[bool, str]:
         try:
-            db_manager = DatabaseManager()
-            
-            with db_manager.get_conn() as conn:
-                # 构建查询条件
-                where_conditions = ["1=1"]
-                params = []
-                
-                if start_date:
-                    where_conditions.append("DeliveryDate >= ?")
-                    params.append(start_date)
-                
-                if end_date:
-                    where_conditions.append("DeliveryDate <= ?")
-                    params.append(end_date)
-                
-                if order_type and order_type != 'All':
-                    where_conditions.append("OrderType = ?")
-                    params.append(order_type)
-                
-                if item_number:
-                    where_conditions.append("ItemNumber LIKE ?")
-                    params.append(f"%{item_number}%")
-                
-                where_clause = " AND ".join(where_conditions)
-                
-                # 查询汇总数据
-                cursor = conn.execute(f"""
-                    SELECT 
-                        DeliveryDate,
-                        CalendarWeek,
-                        ItemNumber,
-                        ItemDescription,
-                        OrderType,
-                        SUM(CASE WHEN OrderType = 'F' THEN RequiredQty ELSE 0 END) as FormalQty,
-                        SUM(CASE WHEN OrderType = 'P' THEN RequiredQty ELSE 0 END) as ForecastQty,
-                        SUM(RequiredQty) as TotalQty,
-                        COUNT(DISTINCT OrderId) as OrderCount
-                    FROM CustomerOrderLines 
-                    WHERE {where_clause}
-                    GROUP BY DeliveryDate, CalendarWeek, ItemNumber, ItemDescription, OrderType
-                    ORDER BY DeliveryDate, ItemNumber
-                """, params)
-                
-                results = []
-                for row in cursor.fetchall():
-                    results.append({
-                        'DeliveryDate': row[0],
-                        'CalendarWeek': row[1],
-                        'ItemNumber': row[2],
-                        'ItemDescription': row[3],
-                        'OrderType': row[4],
-                        'FormalQty': row[5],
-                        'ForecastQty': row[6],
-                        'TotalQty': row[7],
-                        'OrderCount': row[8]
-                    })
-                
-                return results
-                
+            with get_conn() as conn:
+                conn.execute("DELETE FROM CustomerOrderLines WHERE ImportId = ?", (import_id,))
+                conn.execute("DELETE FROM CustomerOrders     WHERE ImportId = ?", (import_id,))
+                conn.execute("DELETE FROM OrderImportHistory WHERE ImportId = ?", (import_id,))
+                conn.commit()
+            return True, ""
         except Exception as e:
-            print(f"获取订单汇总失败: {e}")
-            return []
-    
+            return False, str(e)
+
+    # ------------------------- 查询 -------------------------
     @staticmethod
-    def get_orders_by_date_range(start_date: str, end_date: str) -> List[Dict]:
-        """获取指定日期范围内的订单"""
+    def get_import_history() -> List[Dict]:
         try:
-            db_manager = DatabaseManager()
-            
-            with db_manager.get_conn() as conn:
-                cursor = conn.execute("""
+            with get_conn() as conn:
+                cur = conn.execute("""
+                    SELECT ImportId, FileName, ImportDate, OrderCount, LineCount,
+                           ImportStatus, ErrorMessage, ImportedBy
+                    FROM OrderImportHistory
+                    ORDER BY ImportId DESC
+                """)
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            print("获取导入历史失败:", e)
+            return []
+
+    @staticmethod
+    def get_ndlutil_kanban_data(import_id: Optional[int] = None,
+                                start_date: Optional[str] = None,
+                                end_date: Optional[str] = None) -> List[Dict]:
+        """汇总视图（全部版本）。返回聚合：FirmQty/ForecastQty/TotalQty。"""
+        try:
+            where, params = [], []
+            if import_id:
+                where.append("co.ImportId = ?"); params.append(import_id)
+            if start_date:
+                where.append("col.DeliveryDate >= ?"); params.append(start_date)
+            if end_date:
+                where.append("col.DeliveryDate <= ?"); params.append(end_date)
+            where_clause = " AND ".join(where) if where else "1=1"
+
+            sql = f"""
+                SELECT
+                    co.SupplierCode,
+                    co.SupplierName,
+                    col.ItemNumber,
+                    col.ItemDescription,
+                    co.ReleaseDate,
+                    co.ReleaseId,
+                    co.Project,
+                    co.SupplierCode AS PurchaseOrder,
+                    col.DeliveryDate,
+                    col.CalendarWeek,
+                    SUM(CASE WHEN col.OrderType='F' THEN col.RequiredQty ELSE 0 END) AS FirmQty,
+                    SUM(CASE WHEN col.OrderType='P' THEN col.RequiredQty ELSE 0 END) AS ForecastQty,
+                    SUM(col.RequiredQty) AS TotalQty,
+                    co.ImportId
+                FROM CustomerOrderLines col
+                JOIN CustomerOrders co ON col.OrderId = co.OrderId
+                WHERE {where_clause}
+                GROUP BY
+                    co.SupplierCode, co.SupplierName,
+                    col.ItemNumber, col.ItemDescription,
+                    co.ReleaseDate, co.ReleaseId, co.Project,
+                    co.ImportId, col.DeliveryDate, col.CalendarWeek
+                ORDER BY co.SupplierCode, col.ItemNumber, col.DeliveryDate
+            """
+            with get_conn() as conn:
+                cur = conn.execute(sql, params)
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            print("获取NDLUtil看板数据失败:", e)
+            return []
+
+    @staticmethod
+    def get_orders_by_import_version(import_id: int) -> List[Dict]:
+        try:
+            with get_conn() as conn:
+                cur = conn.execute("""
                     SELECT 
-                        co.OrderNumber,
-                        co.SupplierName,
-                        co.CustomerName,
-                        co.ReleaseDate,
+                        co.OrderId, co.OrderNumber, co.SupplierCode, co.SupplierName,
+                        co.CustomerCode, co.CustomerName, co.ReleaseDate, co.ReleaseId,
+                        co.Buyer, co.ShipToAddress, co.ReceiptQuantity, co.CumReceived,
+                        co.Project, co.OrderStatus, co.CreatedDate, co.UpdatedDate,
+                        co.Remark, co.ImportId
+                    FROM CustomerOrders co
+                    WHERE co.ImportId = ?
+                    ORDER BY co.OrderNumber
+                """, (import_id,))
+                return [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            print("获取版本订单数据失败:", e)
+            return []
+
+    @staticmethod
+    def get_order_lines_by_import_version(import_id: int) -> List[Dict]:
+        """返回明细行（注意：不再 SELECT 不存在的列）"""
+        try:
+            with get_conn() as conn:
+                cur = conn.execute("""
+                    SELECT
+                        col.LineId,
                         col.ItemNumber,
                         col.ItemDescription,
                         col.DeliveryDate,
                         col.CalendarWeek,
                         col.OrderType,
                         col.RequiredQty,
-                        col.CumulativeQty,
-                        col.NetRequiredQty
-                    FROM CustomerOrders co
-                    JOIN CustomerOrderLines col ON co.OrderId = col.OrderId
-                    WHERE col.DeliveryDate BETWEEN ? AND ?
-                    ORDER BY col.DeliveryDate, col.ItemNumber
-                """, (start_date, end_date))
-                
-                results = []
-                for row in cursor.fetchall():
-                    results.append({
-                        'OrderNumber': row[0],
-                        'SupplierName': row[1],
-                        'CustomerName': row[2],
-                        'ReleaseDate': row[3],
-                        'ItemNumber': row[4],
-                        'ItemDescription': row[5],
-                        'DeliveryDate': row[6],
-                        'CalendarWeek': row[7],
-                        'OrderType': row[8],
-                        'RequiredQty': row[9],
-                        'CumulativeQty': row[10],
-                        'NetRequiredQty': row[11]
-                    })
-                
-                return results
-                
+                        co.SupplierCode,
+                        co.SupplierName,
+                        co.ReleaseDate,
+                        co.ReleaseId,
+                        co.SupplierCode AS PurchaseOrder,
+                        COALESCE(co.ReceiptQuantity, 0) AS ReceiptQuantity,
+                        COALESCE(co.CumReceived, 0)  AS CumReceived
+                    FROM CustomerOrderLines col
+                    JOIN CustomerOrders     co  ON col.OrderId = co.OrderId
+                    WHERE co.ImportId = ?
+                    ORDER BY co.SupplierCode, col.ItemNumber, col.DeliveryDate
+                """, (import_id,))
+                return [dict(r) for r in cur.fetchall()]
         except Exception as e:
-            print(f"获取订单失败: {e}")
+            print("获取版本订单明细数据失败:", e)
             return []
-    
-    @staticmethod
-    def get_import_history(limit: int = 50) -> List[Dict]:
-        """获取导入历史"""
-        try:
-            db_manager = DatabaseManager()
-            
-            with db_manager.get_conn() as conn:
-                cursor = conn.execute("""
-                    SELECT ImportId, FileName, ImportDate, OrderCount, LineCount, 
-                           ImportStatus, ErrorMessage, ImportedBy
-                    FROM OrderImportHistory
-                    ORDER BY ImportDate DESC
-                    LIMIT ?
-                """, (limit,))
-                
-                results = []
-                for row in cursor.fetchall():
-                    results.append({
-                        'ImportId': row[0],
-                        'FileName': row[1],
-                        'ImportDate': row[2],
-                        'OrderCount': row[3],
-                        'LineCount': row[4],
-                        'ImportStatus': row[5],
-                        'ErrorMessage': row[6],
-                        'ImportedBy': row[7]
-                    })
-                
-                return results
-                
-        except Exception as e:
-            print(f"获取导入历史失败: {e}")
-            return []
-
-    @staticmethod
-    def get_orders_pivot_data(start_date: str = None, end_date: str = None, 
-                             order_type: str = None, item_number: str = None, 
-                             version_id: int = None) -> Dict:
-        """
-        获取订单透视表数据（看板视图）
-        
-        Args:
-            start_date: 开始日期 (YYYY-MM-DD)
-            end_date: 结束日期 (YYYY-MM-DD)
-            order_type: 订单类型 (F/P/All)
-            item_number: 产品型号
-            version_id: 版本ID（导入历史ID）
-            
-        Returns:
-            Dict: 包含透视表数据的字典
-        """
-        try:
-            print(f"🔍 查询透视表数据: start_date={start_date}, end_date={end_date}, order_type={order_type}, item_number={item_number}, version_id={version_id}")
-            
-            db_manager = DatabaseManager()
-            
-            with db_manager.get_conn() as conn:
-                # 构建查询条件
-                where_conditions = ["1=1"]
-                params = []
-                
-                # 添加版本筛选
-                if version_id:
-                    where_conditions.append("col.ImportId = ?")
-                    params.append(version_id)
-                    print(f"   添加版本筛选: ImportId = {version_id}")
-                
-                if start_date and start_date.strip():
-                    # 转换日期格式从 YYYY-MM-DD 到 MM/DD/YY
-                    try:
-                        from datetime import datetime
-                        date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-                        start_date_formatted = date_obj.strftime('%m/%d/%y')
-                        where_conditions.append("col.DeliveryDate >= ?")
-                        params.append(start_date_formatted)
-                        print(f"   转换开始日期: {start_date} -> {start_date_formatted}")
-                    except Exception as e:
-                        print(f"   ⚠️ 开始日期格式转换失败: {start_date}, 错误: {e}")
-                        # 如果日期转换失败，不添加日期条件，避免数据丢失
-                
-                if end_date and end_date.strip():
-                    # 转换日期格式从 YYYY-MM-DD 到 MM/DD/YY
-                    try:
-                        from datetime import datetime
-                        date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-                        end_date_formatted = date_obj.strftime('%m/%d/%y')
-                        where_conditions.append("col.DeliveryDate <= ?")
-                        params.append(end_date_formatted)
-                        print(f"   转换结束日期: {end_date} -> {end_date_formatted}")
-                    except Exception as e:
-                        print(f"   ⚠️ 结束日期格式转换失败: {end_date}, 错误: {e}")
-                        # 如果日期转换失败，不添加日期条件，避免数据丢失
-                
-                if order_type and order_type != 'All':
-                    where_conditions.append("col.OrderType = ?")
-                    params.append(order_type)
-                
-                if item_number and item_number.strip():
-                    where_conditions.append("col.ItemNumber LIKE ?")
-                    params.append(f"%{item_number}%")
-                
-                where_clause = " AND ".join(where_conditions)
-                print(f"   WHERE条件: {where_clause}")
-                print(f"   参数: {params}")
-                
-                # 获取所有产品型号
-                cursor = conn.execute(f"""
-                    SELECT DISTINCT col.ItemNumber, col.ItemDescription
-                    FROM CustomerOrderLines col
-                    WHERE {where_clause}
-                    ORDER BY col.ItemNumber
-                """, params)
-                
-                items = []
-                for row in cursor.fetchall():
-                    items.append({
-                        'ItemNumber': row[0],
-                        'ItemDescription': row[1] or ''
-                    })
-                
-                print(f"   找到产品: {len(items)} 个")
-                
-                # 如果没有找到产品，尝试不限制日期范围查询
-                if not items and (start_date or end_date):
-                    print("   ⚠️ 使用日期筛选未找到数据，尝试查询所有数据...")
-                    # 重新查询，不使用日期限制
-                    base_conditions = ["1=1"]
-                    base_params = []
-                    if version_id:
-                        base_conditions.append("col.ImportId = ?")
-                        base_params.append(version_id)
-                    
-                    base_where = " AND ".join(base_conditions)
-                    cursor = conn.execute(f"""
-                        SELECT DISTINCT col.ItemNumber, col.ItemDescription
-                        FROM CustomerOrderLines col
-                        WHERE {base_where}
-                        ORDER BY col.ItemNumber
-                    """, base_params)
-                    
-                    items = []
-                    for row in cursor.fetchall():
-                        items.append({
-                            'ItemNumber': row[0],
-                            'ItemDescription': row[1] or ''
-                        })
-                    print(f"   重新查询找到产品: {len(items)} 个")
-                
-                # 获取所有日历周（按顺序）
-                cursor = conn.execute(f"""
-                    SELECT DISTINCT col.CalendarWeek, col.DeliveryDate
-                    FROM CustomerOrderLines col
-                    WHERE {where_clause}
-                    ORDER BY col.DeliveryDate
-                """, params)
-                
-                weeks = []
-                for row in cursor.fetchall():
-                    weeks.append({
-                        'CalendarWeek': row[0],
-                        'DeliveryDate': row[1]
-                    })
-                
-                print(f"   找到周数: {len(weeks)} 个")
-                
-                # 如果没有找到周数，尝试不限制日期范围查询
-                if not weeks and (start_date or end_date):
-                    print("   ⚠️ 使用日期筛选未找到周数，尝试查询所有数据...")
-                    # 重新查询，不使用日期限制
-                    base_conditions = ["1=1"]
-                    base_params = []
-                    if version_id:
-                        base_conditions.append("col.ImportId = ?")
-                        base_params.append(version_id)
-                    
-                    base_where = " AND ".join(base_conditions)
-                    cursor = conn.execute(f"""
-                        SELECT DISTINCT col.CalendarWeek, col.DeliveryDate
-                        FROM CustomerOrderLines col
-                        WHERE {base_where}
-                        ORDER BY col.DeliveryDate
-                    """, base_params)
-                    
-                    weeks = []
-                    for row in cursor.fetchall():
-                        weeks.append({
-                            'CalendarWeek': row[0],
-                            'DeliveryDate': row[1]
-                        })
-                    print(f"   重新查询找到周数: {len(weeks)} 个")
-                
-                # 获取透视表数据
-                cursor = conn.execute(f"""
-                    SELECT 
-                        col.ItemNumber,
-                        col.CalendarWeek,
-                        col.OrderType,
-                        SUM(col.RequiredQty) as TotalQty
-                    FROM CustomerOrderLines col
-                    WHERE {where_clause}
-                    GROUP BY col.ItemNumber, col.CalendarWeek, col.OrderType
-                    ORDER BY col.ItemNumber, col.CalendarWeek
-                """, params)
-                
-                # 构建透视表数据
-                pivot_data = {}
-                for row in cursor.fetchall():
-                    item_num = row[0]
-                    week = row[1]
-                    order_type = row[2]
-                    qty = row[3]
-                    
-                    if item_num not in pivot_data:
-                        pivot_data[item_num] = {}
-                    
-                    if week not in pivot_data[item_num]:
-                        pivot_data[item_num][week] = {'F': 0, 'P': 0, 'Total': 0}
-                    
-                    pivot_data[item_num][week][order_type] = qty
-                    pivot_data[item_num][week]['Total'] += qty
-                
-                print(f"   构建透视数据: {len(pivot_data)} 个产品")
-                
-                return {
-                    'items': items,
-                    'weeks': weeks,
-                    'pivot_data': pivot_data
-                }
-                
-        except Exception as e:
-            print(f"❌ 获取透视表数据失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return {'items': [], 'weeks': [], 'pivot_data': {}}

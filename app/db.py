@@ -9,28 +9,46 @@ class DatabaseManager:
     """数据库管理器"""
     
     def __init__(self):
-        # 优先使用项目目录下的数据库文件，如果没有则使用系统目录
-        project_db = Path(__file__).parent.parent / 'mes.db'
-        if project_db.exists():
-            self.db_path = project_db
-        else:
-            # 数据库文件路径：%LOCALAPPDATA%/MES_MRP_PY/mes.db
-            local_app_data = os.getenv('LOCALAPPDATA', os.path.expanduser('~'))
-            db_dir = Path(local_app_data) / 'MES_MRP_PY'
-            db_dir.mkdir(exist_ok=True)
-            self.db_path = db_dir / 'mes.db'
+        # 数据库文件放在项目根目录下
+        self.project_root = Path(__file__).parent.parent
+        self.db_path = self.project_root / 'mes.db'
         
-        print(f"使用数据库文件: {self.db_path}")
+        # 确保项目目录存在
+        self.project_root.mkdir(exist_ok=True)
+        
+        print(f"数据库路径: {self.db_path}")
+        
+        # 初始化数据库
         self._init_db()
     
     def _init_db(self):
-        """初始化数据库，创建表结构"""
-        with self.get_conn() as conn:
-            # 启用外键约束
-            conn.execute("PRAGMA foreign_keys = ON")
+        """初始化数据库"""
+        try:
+            # 如果数据库文件不存在，创建它
+            if not self.db_path.exists():
+                print(f"创建新数据库: {self.db_path}")
+                self.db_path.touch()
             
-            # 检查数据库版本
-            self._check_and_update_schema(conn)
+            # 连接数据库并创建表
+            with self.get_conn() as conn:
+                # 读取schema.sql文件
+                schema_file = Path(__file__).parent / 'schema.sql'
+                if schema_file.exists():
+                    with open(schema_file, 'r', encoding='utf-8') as f:
+                        schema_sql = f.read()
+                    
+                    # 执行schema
+                    conn.executescript(schema_sql)
+                    print("数据库表结构创建完成")
+                else:
+                    print(f"警告: 找不到schema文件 {schema_file}")
+                
+                # 检查并更新数据库版本
+                self._check_and_update_schema(conn)
+                
+        except Exception as e:
+            print(f"数据库初始化失败: {e}")
+            raise
     
     def _check_and_update_schema(self, conn):
         """检查并更新数据库结构"""

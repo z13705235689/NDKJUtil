@@ -317,20 +317,27 @@ CREATE TABLE IF NOT EXISTS ProductionOrderOperations (
 -- 客户订单主表
 CREATE TABLE IF NOT EXISTS CustomerOrders (
     OrderId INTEGER PRIMARY KEY AUTOINCREMENT,
-    OrderNumber TEXT NOT NULL UNIQUE,           -- 订单号，如E67420
+    OrderNumber TEXT NOT NULL,                 -- 订单号，如CW33_2024
     ImportId INTEGER,                          -- 导入版本ID
+    CalendarWeek TEXT NOT NULL,                -- 日历周，如CW33
+    OrderYear INTEGER NOT NULL,                -- 订单年份
     SupplierCode TEXT,                         -- 供应商代码
     SupplierName TEXT,                         -- 供应商名称
     CustomerCode TEXT,                         -- 客户代码
     CustomerName TEXT,                         -- 客户名称
     ReleaseDate TEXT,                          -- 发布日期
+    ReleaseId TEXT,                            -- 发布ID
     Buyer TEXT,                                -- 采购员
     ShipToAddress TEXT,                        -- 收货地址
+    ReceiptQuantity REAL DEFAULT 0,            -- 收货数量
+    CumReceived REAL DEFAULT 0,                -- 累计收货数量
+    Project TEXT,                              -- 项目名称
     OrderStatus TEXT DEFAULT 'Active',         -- 订单状态
     CreatedDate TEXT DEFAULT CURRENT_TIMESTAMP,
     UpdatedDate TEXT DEFAULT CURRENT_TIMESTAMP,
     Remark TEXT,
-    FOREIGN KEY (ImportId) REFERENCES OrderImportHistory(ImportId)
+    FOREIGN KEY (ImportId) REFERENCES OrderImportHistory(ImportId),
+    UNIQUE(ImportId, CalendarWeek, OrderYear)  -- 唯一索引：导入版本ID + CW几和年份
 );
 
 -- 客户订单明细表
@@ -390,6 +397,7 @@ CREATE INDEX IF NOT EXISTS idx_plannedevents_itemdate ON PlannedEvents(ItemId, E
 CREATE INDEX IF NOT EXISTS idx_scheduleplans_itemdate ON SchedulePlans(ItemId, StartDate);
 CREATE INDEX IF NOT EXISTS idx_productionorders_item ON ProductionOrders(ItemId);
 CREATE INDEX IF NOT EXISTS idx_productionorders_status ON ProductionOrders(Status);
+CREATE INDEX IF NOT EXISTS idx_customer_orders_cw_year ON CustomerOrders(CalendarWeek, OrderYear);
 CREATE INDEX IF NOT EXISTS idx_customer_orders_number ON CustomerOrders(OrderNumber);
 CREATE INDEX IF NOT EXISTS idx_customer_order_lines_order ON CustomerOrderLines(OrderId);
 CREATE INDEX IF NOT EXISTS idx_customer_order_lines_item ON CustomerOrderLines(ItemNumber);
@@ -452,3 +460,44 @@ CREATE TRIGGER IF NOT EXISTS update_production_orders_timestamp
 BEGIN
     UPDATE ProductionOrders SET UpdatedDate = CURRENT_TIMESTAMP WHERE OrderId = NEW.OrderId;
 END;
+
+
+-- ============ 仓库主数据/关系表 ============
+CREATE TABLE IF NOT EXISTS Warehouses (
+  WarehouseId   INTEGER PRIMARY KEY AUTOINCREMENT,
+  Code          TEXT NOT NULL UNIQUE,
+  Name          TEXT NOT NULL,
+  IsActive      INTEGER NOT NULL DEFAULT 1,
+  Remark        TEXT,
+  CreatedDate   TEXT DEFAULT CURRENT_TIMESTAMP,
+  UpdatedDate   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS WarehouseItems (
+  Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  WarehouseId  INTEGER NOT NULL,
+  ItemId       INTEGER NOT NULL,
+  MinQty       REAL DEFAULT 0,
+  MaxQty       REAL DEFAULT 0,
+  ReorderPoint REAL DEFAULT 0,
+  CreatedDate   TEXT DEFAULT CURRENT_TIMESTAMP,
+  UpdatedDate   TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (WarehouseId, ItemId),
+  FOREIGN KEY (WarehouseId) REFERENCES Warehouses(WarehouseId),
+  FOREIGN KEY (ItemId) REFERENCES Items(ItemId)
+);
+
+-- 迁移历史仓库字符串到主数据
+INSERT OR IGNORE INTO Warehouses(Code, Name)
+SELECT w, w FROM (
+  SELECT DISTINCT Warehouse AS w FROM InventoryBalance WHERE IFNULL(Warehouse,'')<>''
+  UNION
+  SELECT DISTINCT Warehouse AS w FROM InventoryTx      WHERE IFNULL(Warehouse,'')<>''
+);
+
+-- 没有任何仓库时，建一个默认仓库
+INSERT OR IGNORE INTO Warehouses(Code, Name)
+SELECT '默认仓库','默认仓库'
+WHERE NOT EXISTS(SELECT 1 FROM Warehouses);
+
+

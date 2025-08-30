@@ -9,6 +9,7 @@ from app.ui.bom_management import BomManagementWidget
 from app.ui.customer_order_management import CustomerOrderManagement
 from app.ui.inventory_management import InventoryManagement
 from app.ui.mrp_viewer import MRPViewer
+from app.ui.database_management import DatabaseManagement
 
 
 class ModernButton(QPushButton):
@@ -158,6 +159,7 @@ class Sidebar(QFrame):
             "客户订单",
             "库存管理",
             "MRP 计算",
+            "数据库管理",
             "自动排产",
             "库存监控",
             "系统设置"
@@ -337,6 +339,10 @@ class ContentArea(QFrame):
         self.mrp_page = self.create_mrp_page()
         self.stacked_widget.addWidget(self.mrp_page)
 
+        # 数据库管理页面
+        self.database_page = self.create_database_page()
+        self.stacked_widget.addWidget(self.database_page)
+
         # 其他页面占位符
         self.placeholder_page = self.create_placeholder_page("功能开发中...")
         self.stacked_widget.addWidget(self.placeholder_page)
@@ -489,7 +495,6 @@ class ContentArea(QFrame):
         # 客户订单管理
         self.customer_order_editor = CustomerOrderManagement()
         layout.addWidget(self.customer_order_editor)
-
         return page
 
     def create_inventory_page(self):
@@ -510,6 +515,16 @@ class ContentArea(QFrame):
         layout.setSpacing(16)
         self.mrp_widget = MRPViewer()
         layout.addWidget(self.mrp_widget)
+        return page
+
+    def create_database_page(self):
+        """创建数据库管理页面"""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
+        self.database_widget = DatabaseManagement()
+        layout.addWidget(self.database_widget)
         return page
 
 
@@ -571,12 +586,14 @@ class MainWindow(QMainWindow):
             self.content_area.switch_to_page(4)  # 库存管理页面
         elif "MRP 计算" in page_name:
             self.content_area.switch_to_page(5)  # MRP页面
+        elif "数据库管理" in page_name:
+            self.content_area.switch_to_page(6)  # 数据库管理页面
         elif "自动排产" in page_name:
-            self.content_area.switch_to_page(6)  # 占位页面
+            self.content_area.switch_to_page(7)  # 占位页面
         elif "库存监控" in page_name:
-            self.content_area.switch_to_page(6)  # 占位页面
+            self.content_area.switch_to_page(7)  # 占位页面
         elif "系统设置" in page_name:
-            self.content_area.switch_to_page(6)  # 占位页面
+            self.content_area.switch_to_page(7)  # 占位页面
         else:
             self.content_area.switch_to_page(0)  # 默认欢迎页面
     
