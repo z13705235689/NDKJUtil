@@ -108,7 +108,7 @@ class Sidebar(QFrame):
         logo_layout.setSpacing(3)
         
         # 系统标题
-        title_label = QLabel("MES 生产管理系统")
+        title_label = QLabel("牛大MRP生产管理")
         title_label.setStyleSheet("""
             QLabel {
                 color: white;
@@ -258,7 +258,7 @@ class ContentArea(QFrame):
         welcome_layout.setSpacing(20)  # 减小间距
         
         # 欢迎标题 - 减小字体
-        welcome_title = QLabel("MES/MRP 制造执行系统")
+        welcome_title = QLabel("牛大MRP生产管理系统")
         welcome_title.setStyleSheet("""
             QLabel {
                 color: #262626;
@@ -530,7 +530,7 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MES 生产管理系统")
+        self.setWindowTitle("牛大MRP生产管理")
         self.setMinimumSize(1000, 700)  # 调整最小尺寸
         self.resize(1200, 800)  # 调整默认窗口大小
         self.setStyleSheet("""
@@ -598,7 +598,7 @@ def main():
     app = QApplication(sys.argv)
     
     # 设置应用程序信息
-    app.setApplicationName("牛大MES生产管理")
+    app.setApplicationName("牛大MRP生产管理")
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("Niuda Technology")
     
