@@ -160,9 +160,6 @@ class Sidebar(QFrame):
             "库存管理",
             "MRP 计算",
             "数据库管理",
-            "自动排产",
-            "库存监控",
-            "系统设置"
         ]
         
         for text in other_nav_items:
@@ -586,14 +583,11 @@ class MainWindow(QMainWindow):
             self.content_area.switch_to_page(4)  # 库存管理页面
         elif "MRP 计算" in page_name:
             self.content_area.switch_to_page(5)  # MRP页面
+            # 切换到MRP页面时自动刷新订单版本列表
+            if hasattr(self.content_area, 'mrp_widget'):
+                self.content_area.mrp_widget.refresh_order_versions()
         elif "数据库管理" in page_name:
             self.content_area.switch_to_page(6)  # 数据库管理页面
-        elif "自动排产" in page_name:
-            self.content_area.switch_to_page(7)  # 占位页面
-        elif "库存监控" in page_name:
-            self.content_area.switch_to_page(7)  # 占位页面
-        elif "系统设置" in page_name:
-            self.content_area.switch_to_page(7)  # 占位页面
         else:
             self.content_area.switch_to_page(0)  # 默认欢迎页面
     

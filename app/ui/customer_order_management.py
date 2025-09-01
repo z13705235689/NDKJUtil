@@ -126,7 +126,11 @@ class CustomerOrderManagement(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("客户订单管理")
-        self.setMinimumSize(1200, 800)
+        # 移除最小尺寸设置，让页面适应父容器大小
+        # self.setMinimumSize(1200, 800)
+        
+        # 设置大小策略，让页面适应父容器
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         main_layout = QVBoxLayout()
 
@@ -247,6 +251,9 @@ class CustomerOrderManagement(QWidget):
             policy = getattr(QAbstractScrollArea, "AdjustToContentsOnFirstShow", QAbstractScrollArea.AdjustToContents)
         self.kanban_table.setSizeAdjustPolicy(policy)
         self.kanban_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
+        # 设置表格的最小高度，确保在客户端范围内显示
+        self.kanban_table.setMinimumHeight(300)
 
         kanban_layout.addWidget(self.kanban_table)
         kanban_widget.setLayout(kanban_layout)
@@ -422,7 +429,7 @@ class CustomerOrderManagement(QWidget):
             else:
                 base_pn = pn
             
-            # 定义排序优先级（基于完整的基础型号）
+            # 定义排序优先级（基于去掉最后一位字母的基础型号）
             priority_map = {
                 "R001H368": 1,  # Passat rear double
                 "R001H369": 2,  # Passat rear single
@@ -434,17 +441,27 @@ class CustomerOrderManagement(QWidget):
                 "R001J142": 8,  # Lavida rear single
             }
             
-            # 直接按完整基础型号的优先级排序
-            priority = priority_map.get(base_pn, 999)  # 不匹配的排最后
+            # 先尝试完整基础型号匹配
+            if base_pn in priority_map:
+                priority = priority_map[base_pn]
+            else:
+                # 如果完整匹配失败，尝试基础项目匹配
+                if len(base_pn) > 1 and base_pn[-1].isdigit():
+                    base = base_pn[:-1]  # 去掉最后一位数字
+                else:
+                    base = base_pn
+                
+                base_priority_map = {
+                    "R001H36": 10,  # Passat
+                    "R001P32": 20,  # Tiguan L
+                    "R001J13": 30,  # A5L
+                    "R001J14": 40,  # Lavida
+                }
+                priority = base_priority_map.get(base, 999)  # 不匹配的排最后
             
-            return (priority, sup)
+            return (priority, sup, base_pn, pn)  # 添加完整PN作为最后的排序依据
         
         keys_all = sorted(groups_all.keys(), key=sort_key)
-        
-        # 调试排序结果
-        print("DEBUG: 排序后的产品型号顺序:")
-        for i, (sup, pn) in enumerate(keys_all):
-            print(f"  {i}: {pn} (供应商: {sup})")
         
         data_rows = len(keys_all)
         self.kanban_table.setRowCount(data_rows + 1)  # +1 行留给 TOTAL
@@ -453,17 +470,13 @@ class CustomerOrderManagement(QWidget):
             if not pn:
                 return "UNKNOWN"
             
-            # 调试信息
-            print(f"DEBUG: 正在处理产品型号: '{pn}', 类型: {type(pn)}")
-            
             # 去掉最后一位字母后缀，获取基础产品型号
             if len(pn) > 1 and pn[-1].isalpha():
                 base_pn = pn[:-1]  # 去掉最后一位字母
-                print(f"DEBUG: 去掉字母后缀: '{pn}' -> '{base_pn}'")
             else:
                 base_pn = pn
             
-            # 完整的产品型号映射（基于去掉后缀后的型号）
+            # 完整的产品型号映射（基于去掉最后一位字母的基础型号）
             full_pn_map = {
                 "R001H368": "Passat rear double",
                 "R001H369": "Passat rear single",
@@ -475,15 +488,13 @@ class CustomerOrderManagement(QWidget):
                 "R001J142": "Lavida rear single"
             }
             
-            # 先尝试基础型号匹配
+            # 先尝试完整基础型号匹配
             if base_pn in full_pn_map:
-                print(f"DEBUG: 基础型号匹配成功: {pn} -> {base_pn} -> {full_pn_map[base_pn]}")
                 return full_pn_map[base_pn]
             
-            # 如果基础型号匹配失败，尝试去掉最后一位数字匹配
+            # 如果完整匹配失败，尝试基础项目匹配
             if len(base_pn) > 1 and base_pn[-1].isdigit():
                 base = base_pn[:-1]  # 去掉最后一位数字
-                print(f"DEBUG: 尝试基础匹配: '{pn}' -> 基础型号: '{base_pn}' -> 基础: '{base}'")
             else:
                 base = base_pn
             
@@ -497,8 +508,6 @@ class CustomerOrderManagement(QWidget):
             project = base_map.get(base, "UNKNOWN")
             if project == "UNKNOWN":
                 print(f"警告：产品型号 '{pn}' 没有匹配到项目，默认放到最后")
-            else:
-                print(f"DEBUG: 基础匹配成功: {pn} -> {project}")
             return project
 
         # 6) 填充数据行
@@ -507,9 +516,7 @@ class CustomerOrderManagement(QWidget):
             rd_obj = _safe_parse_date(ri.get("release_date"))
             rd_txt = rd_obj.strftime("%Y/%m/%d") if rd_obj else (ri.get("release_date") or "")
 
-            print(f"DEBUG: 行 {row_idx}: 供应商='{sup}', 产品型号='{pn}'")
             project_result = project_name(pn)
-            print(f"DEBUG: 行 {row_idx}: 项目名称结果: '{project_result}'")
 
             fixed_vals = [
                 rd_txt, str(ri.get("release_id", "") or ""), pn,
@@ -908,6 +915,11 @@ class CustomerOrderManagement(QWidget):
         self.details_table.setAlternatingRowColors(True)
         hdr = self.details_table.horizontalHeader()
         hdr.setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        # 设置表格的最小高度，确保在客户端范围内显示
+        self.details_table.setMinimumHeight(300)
+        self.details_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
         layout.addWidget(self.details_table)
 
         self.tab_widget.addTab(details_widget, "订单明细")
@@ -1025,6 +1037,11 @@ class CustomerOrderManagement(QWidget):
         self.history_table = QTableWidget()
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.history_table.setAlternatingRowColors(True)
+        
+        # 设置表格的最小高度，确保在客户端范围内显示
+        self.history_table.setMinimumHeight(300)
+        self.history_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
         layout.addWidget(self.history_table)
 
         self.tab_widget.addTab(history_widget, "导入历史")
@@ -1123,20 +1140,37 @@ class CustomerOrderManagement(QWidget):
                 QMessageBox.information(self, "导入成功", msg)
         # 刷新
         self.refresh_data()
+        
+        # 通知主窗口刷新MRP看板的订单版本列表
+        self.notify_mrp_refresh()
 
     def _check_unmatched_items(self, import_id: int) -> str:
         """检查导入数据中是否有不匹配的产品型号"""
         try:
             data = CustomerOrderService.get_order_lines_by_import_version(import_id)
             unmatched = set()
-            priority_bases = {"R001H36", "R001P32", "R001J13", "R001J14"}
+            priority_bases = {
+                "R001H368", "R001H369",  # Passat
+                "R001P320", "R001P313",  # Tiguan L
+                "R001J139", "R001J140",  # A5L
+                "R001J141", "R001J142"   # Lavida
+            }
             
             for line in data or []:
                 pn = line.get("ItemNumber", "")
                 if pn and len(pn) > 1:
+                    # 使用新的匹配规则：去掉最后一位字母
                     base = pn[:-1]
                     if base not in priority_bases:
-                        unmatched.add(pn)
+                        # 如果完整匹配失败，尝试基础项目匹配
+                        if len(base) > 1 and base[-1].isdigit():
+                            base_project = base[:-1]  # 去掉最后一位数字
+                        else:
+                            base_project = base
+                        
+                        base_project_bases = {"R001H36", "R001P32", "R001J13", "R001J14"}
+                        if base_project not in base_project_bases:
+                            unmatched.add(pn)
             
             if unmatched:
                 return "\n".join(sorted(unmatched))
@@ -1144,6 +1178,19 @@ class CustomerOrderManagement(QWidget):
         except Exception as e:
             print(f"检查不匹配项目失败: {e}")
             return ""
+
+    def notify_mrp_refresh(self):
+        """通知主窗口刷新MRP看板的订单版本列表"""
+        try:
+            # 通过父窗口链向上查找主窗口
+            parent = self.parent()
+            while parent:
+                if hasattr(parent, 'content_area') and hasattr(parent.content_area, 'mrp_widget'):
+                    parent.content_area.mrp_widget.refresh_order_versions()
+                    break
+                parent = parent.parent()
+        except Exception as e:
+            print(f"通知MRP刷新失败: {e}")
 
     def show_version_management(self):
         dlg = VersionManagementDialog(self)

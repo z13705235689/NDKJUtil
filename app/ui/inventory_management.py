@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QGroupBox, QLineEdit, QComboBox, QMessageBox,
     QTabWidget, QHeaderView, QAbstractItemView, QFileDialog, QDialog,
-    QFormLayout, QDialogButtonBox, QTextEdit, QSpinBox
+    QFormLayout, QDialogButtonBox, QTextEdit, QSpinBox, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor
@@ -157,7 +157,12 @@ class InventoryManagement(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("库存管理")
-        self.setMinimumSize(1200, 800)
+        # 移除最小尺寸设置，让页面适应父容器大小
+        # self.setMinimumSize(1200, 800)
+        
+        # 设置大小策略，让页面适应父容器
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
         # 添加成员变量保存原始数据，避免筛选时丢失数据
         self._original_daily_data = []
         self._init_ui()
@@ -222,6 +227,20 @@ class InventoryManagement(QWidget):
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         for c in [2,3,4,5,6,7,8]:
             header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+        
+        # 设置表格的大小策略，确保有足够的显示空间
+        self.tbl_balance.setMinimumHeight(300)  # 调整最小高度为300像素
+        self.tbl_balance.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 允许表格扩展
+        
+        # 设置合理的行高，避免行高过高
+        self.tbl_balance.verticalHeader().setDefaultSectionSize(30)  # 设置默认行高为30像素
+        self.tbl_balance.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # 固定行高
+        
+        # 设置表格字体大小
+        font = self.tbl_balance.font()
+        font.setPointSize(9)  # 设置字体大小为9pt
+        self.tbl_balance.setFont(font)
+        
         layout.addWidget(self.tbl_balance)
 
     def load_balance(self):
@@ -246,7 +265,6 @@ class InventoryManagement(QWidget):
             item_id = None
             if kw:
                 items = ItemService.search_items(kw)
-                # 移除物料类型筛选，显示所有类型的物料
                 if items:
                     item_id = items[0]["ItemId"]
             rows = InventoryService.get_inventory_balance(item_id=item_id)
@@ -263,26 +281,30 @@ class InventoryManagement(QWidget):
                         filtered_rows.append(row)
                 rows = filtered_rows
             
-            # 如果没有找到记录，但选择了特定仓库，则显示该仓库下的所有物料（数量为0）
-            if not rows:
-                warehouse_items = WarehouseService.list_items_by_warehouse_name(cur_wh)
-                if warehouse_items:
-                    rows = []
-                    for item in warehouse_items:
-                        rows.append({
-                            "ItemId": item["ItemId"],
-                            "ItemCode": item["ItemCode"],
-                            "CnName": item.get("CnName", ""),
-                            "ItemType": item.get("ItemType", ""),
-                            "Unit": item.get("Unit", ""),
-                            "Warehouse": cur_wh,
-                            "Location": "",
-                            "QtyOnHand": 0,
-                            "SafetyStock": item.get("SafetyStock", 0)
-                        })
+            # 确保所有物料都显示正确的库存数量
+            for row in rows:
+                if row.get("QtyOnHand", 0) == 0:
+                    # 如果显示为0，从库存服务获取真实数量
+                    real_qty = InventoryService.get_onhand(row["ItemId"], cur_wh, row.get("Location"))
+                    row["QtyOnHand"] = real_qty
+        
+        # 对数据进行排序：低于安全库存的排在前面
+        def sort_key(row):
+            qty = int(row.get("QtyOnHand") or 0)
+            safety_stock = int(row.get("SafetyStock") or 0)
+            # 如果安全库存为0，则不算作低库存
+            if safety_stock == 0:
+                return (False, row["ItemCode"])  # 正常库存，按编码排序
+            # 低于安全库存的排在前面
+            is_low_stock = qty < safety_stock
+            return (is_low_stock, row["ItemCode"])  # 低库存优先，然后按编码排序
+        
+        # 按排序键排序，低库存在前
+        rows.sort(key=sort_key, reverse=True)
         
         self.tbl_balance.setRowCount(len(rows))
         for r, it in enumerate(rows):
+            # 先创建所有表格项
             self.tbl_balance.setItem(r, 0, QTableWidgetItem(it["ItemCode"]))
             self.tbl_balance.setItem(r, 1, QTableWidgetItem(it["CnName"]))
             self.tbl_balance.setItem(r, 2, QTableWidgetItem(it["ItemType"]))
@@ -291,14 +313,26 @@ class InventoryManagement(QWidget):
             self.tbl_balance.setItem(r, 5, QTableWidgetItem(it.get("Location","") or ""))
             qty = int(it.get("QtyOnHand") or 0)
             cell_qty = QTableWidgetItem(str(qty))
-            if qty > 0: cell_qty.setBackground(QColor(198,224,180))
             self.tbl_balance.setItem(r, 6, cell_qty)
             ss = int(it.get("SafetyStock") or 0)
             cell_ss = QTableWidgetItem(str(ss))
-            if ss>0 and qty<ss:
-                cell_qty.setForeground(QColor(220,20,60))
-                cell_ss.setForeground(QColor(220,20,60))
             self.tbl_balance.setItem(r, 7, cell_ss)
+            
+            # 检查是否低于安全库存
+            if ss > 0 and qty < ss:
+                # 低于安全库存：整行背景标红
+                for col in range(8):  # 8列（不包括操作列）
+                    item = self.tbl_balance.item(r, col)
+                    if item:
+                        item.setBackground(QColor(255, 200, 200))  # 浅红色背景
+                        if col == 6:  # 在手数量列
+                            item.setForeground(QColor(220, 20, 60))     # 红色文字
+                        elif col == 7:  # 安全库存列
+                            item.setForeground(QColor(220, 20, 60))     # 红色文字
+            else:
+                # 正常库存：绿色背景（仅在手数量列）
+                if qty > 0: 
+                    cell_qty.setBackground(QColor(198, 224, 180))
             
             # 操作列：安全库存设置按钮
             btn_safety = QPushButton("设置安全库存")
@@ -369,6 +403,20 @@ class InventoryManagement(QWidget):
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         for c in [2,3,4,5,6]:
             header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
+        
+        # 设置表格的大小策略，确保有足够的显示空间
+        self.tbl_daily.setMinimumHeight(300)  # 调整最小高度为300像素
+        self.tbl_daily.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 允许表格扩展
+        
+        # 设置合理的行高，避免行高过高
+        self.tbl_daily.verticalHeader().setDefaultSectionSize(30)  # 设置默认行高为30像素
+        self.tbl_daily.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # 固定行高
+        
+        # 设置表格字体大小
+        font = self.tbl_daily.font()
+        font.setPointSize(9)  # 设置字体大小为9pt
+        self.tbl_daily.setFont(font)
+        
         layout.addWidget(self.tbl_daily)
 
     def daily_load_list(self):
@@ -388,36 +436,18 @@ class InventoryManagement(QWidget):
             self.cb_daily_wh.setCurrentText(warehouses[0])
             wh = warehouses[0]
         
-        # 获取库存余额记录
-        rows = InventoryService.get_inventory_balance(warehouse=wh)
+        # 获取该仓库中确实存在的物料列表
+        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
         
-        # 获取仓库下的所有物料
-        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh) if wh != "默认仓库" else []
-        
-        # 创建完整的显示列表：包含有库存的物料和没有库存的物料
+        # 为每个物料获取库存信息
         display_rows = []
-        
-        # 1. 添加有库存余额的物料
-        for row in rows:
-            display_rows.append(row)
-        
-        # 2. 添加没有库存余额的物料（从库存服务获取真实数量）
-        if warehouse_items:
-            existing_item_ids = {row["ItemId"] for row in rows}
-            for item in warehouse_items:
-                if item["ItemId"] not in existing_item_ids:
-                    # 从库存服务获取真实库存数量
-                    real_qty = InventoryService.get_onhand(item["ItemId"], wh, None)
-                    # 获取库位信息（如果有的话）
-                    location_info = ""
-                    try:
-                        # 尝试获取库存余额信息来获取库位
-                        balance_info = InventoryService.get_inventory_balance(item_id=item["ItemId"], warehouse=wh)
-                        if balance_info:
-                            location_info = balance_info[0].get("Location", "") if balance_info else ""
-                    except:
-                        location_info = ""
-                    
+        for item in warehouse_items:
+            # 获取库存余额信息
+            balance_info = InventoryService.get_inventory_balance(item_id=item["ItemId"], warehouse=wh)
+            
+            if balance_info:
+                # 有库存余额记录
+                for balance in balance_info:
                     display_rows.append({
                         "ItemId": item["ItemId"],
                         "ItemCode": item["ItemCode"],
@@ -425,25 +455,30 @@ class InventoryManagement(QWidget):
                         "ItemType": item.get("ItemType", ""),
                         "Unit": item.get("Unit", ""),
                         "Warehouse": wh,
-                        "Location": location_info,
-                        "QtyOnHand": real_qty,
+                        "Location": balance.get("Location", ""),
+                        "QtyOnHand": balance.get("QtyOnHand", 0),
                         "SafetyStock": item.get("SafetyStock", 0)
                     })
-        
-        # 3. 确保所有物料都有正确的库存数量显示
-        for row in display_rows:
-            if row.get("QtyOnHand") is None or row.get("QtyOnHand") == 0:
-                # 再次尝试从库存服务获取数量
-                real_qty = InventoryService.get_onhand(row["ItemId"], wh, row.get("Location"))
-                row["QtyOnHand"] = real_qty
-        
-        rows = display_rows
+            else:
+                # 没有库存余额记录，从库存服务获取真实数量
+                real_qty = InventoryService.get_onhand(item["ItemId"], wh, None)
+                display_rows.append({
+                    "ItemId": item["ItemId"],
+                    "ItemCode": item["ItemCode"],
+                    "CnName": item.get("CnName", ""),
+                    "ItemType": item.get("ItemType", ""),
+                    "Unit": item.get("Unit", ""),
+                    "Warehouse": wh,
+                    "Location": "",
+                    "QtyOnHand": real_qty,
+                    "SafetyStock": item.get("SafetyStock", 0)
+                })
         
         # 保存原始数据用于筛选
-        self._original_daily_data = rows.copy()
+        self._original_daily_data = display_rows.copy()
         
         # 使用统一的渲染方法
-        self._render_daily_table(rows)
+        self._render_daily_table(display_rows)
 
     def row_in(self, rec):
         wh = self.cb_daily_wh.currentText() or "默认仓库"
@@ -506,21 +541,105 @@ class InventoryManagement(QWidget):
             location=(loc or rec.get("Location")), remark_prefix=(rm or "行内登记现存"))
         self.daily_load_list()
 
+    def row_delete(self, rec):
+        """删除物料从仓库"""
+        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        current_stock = InventoryService.get_onhand(rec["ItemId"], wh, rec.get("Location"))
+        
+        # 检查物料是否真的存在于该仓库中
+        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
+        item_exists_in_warehouse = any(item["ItemId"] == rec["ItemId"] for item in warehouse_items)
+        
+        if not item_exists_in_warehouse:
+            QMessageBox.warning(self, "删除失败", 
+                              f"物料 '{rec['ItemCode']}' 在仓库 '{wh}' 中不存在，无法删除。\n"
+                              f"该物料可能只是显示在库存余额中，但并未添加到仓库物料清单中。")
+            return
+        
+        # 确认删除
+        reply = QMessageBox.question(
+            self, 
+            "确认删除", 
+            f"确定要从仓库 '{wh}' 中删除物料 '{rec['ItemCode']} - {rec.get('CnName', '')}' 吗？\n"
+            f"当前库存：{current_stock}\n"
+            f"库位：{rec.get('Location', '') or '默认库位'}\n\n"
+            f"删除后该物料将不再在此仓库显示。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        try:
+            # 如果有库存，先清零库存
+            if current_stock > 0:
+                InventoryService.set_onhand(
+                    rec["ItemId"], 
+                    warehouse=wh, 
+                    target_qty=0,
+                    location=rec.get("Location"),
+                    remark_prefix="删除物料前清零库存"
+                )
+            
+            # 从仓库中删除物料
+            WarehouseService.remove_item_from_warehouse(rec["ItemId"], wh)
+            
+            QMessageBox.information(self, "删除成功", f"物料 '{rec['ItemCode']}' 已从仓库 '{wh}' 中删除")
+            
+            # 立即刷新页面，确保物料从列表中消失
+            self.daily_load_list()
+            
+        except Exception as e:
+            QMessageBox.warning(self, "删除失败", f"删除物料时发生错误：{e}")
+
     def daily_choose_item(self):
-        # 用选择器临时登记（用于该仓库没有余额记录但需要登记的物料）
+        # 获取当前选择的仓库
+        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        
+        # 获取仓库中已存在的物料ID列表
+        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
+        existing_item_ids = {item["ItemId"] for item in warehouse_items}
+        
+        # 用选择器选择物料（只能选择仓库中不存在的）
         dlg = ItemPickerDialog(self)
         if dlg.exec() == QDialog.Accepted:
             it = dlg.get_selected()
             if not it: return
-            wh = self.cb_daily_wh.currentText() or "默认仓库"
-            d2 = QtyPriceDialog(self, title=f"登记：{it['ItemCode']} {it.get('CnName','')}")
-            if d2.exec()!=QDialog.Accepted: return
-            qty, price, loc, rm, _ = d2.get_values()  # 忽略安全库存
-            if qty==0: return
-            # 默认作为 IN（可根据需要改 OUT/ADJ）
-            InventoryService.receive_inventory(it["ItemId"], qty, warehouse=wh,
-                unit_cost=(price or None), location=(loc or None), remark=(rm or "选择器登记"))
-            self.daily_load_list()
+            
+            # 检查物料是否已经在仓库中
+            if it["ItemId"] in existing_item_ids:
+                QMessageBox.warning(self, "物料已存在", 
+                                  f"物料 '{it['ItemCode']}' 已经在仓库 '{wh}' 中存在，无需重复添加。")
+                return
+            
+            # 先添加到仓库中
+            try:
+                # 获取仓库ID
+                warehouse = WarehouseService.get_by_code(wh)
+                if not warehouse:
+                    QMessageBox.warning(self, "仓库不存在", f"仓库 '{wh}' 不存在")
+                    return
+                
+                # 添加物料到仓库
+                WarehouseService.add_item(warehouse["WarehouseId"], it["ItemId"])
+                
+                # 然后进行库存登记
+                d2 = QtyPriceDialog(self, title=f"登记：{it['ItemCode']} {it.get('CnName','')}")
+                if d2.exec()!=QDialog.Accepted: return
+                qty, price, loc, rm, _ = d2.get_values()  # 忽略安全库存
+                if qty==0: return
+                
+                # 执行入库
+                InventoryService.receive_inventory(it["ItemId"], qty, warehouse=wh,
+                    unit_cost=(price or None), location=(loc or None), remark=(rm or "选择器登记"))
+                
+                QMessageBox.information(self, "添加成功", 
+                                      f"物料 '{it['ItemCode']}' 已添加到仓库 '{wh}' 并登记库存 {qty}")
+                self.daily_load_list()
+                
+            except Exception as e:
+                QMessageBox.warning(self, "添加失败", f"添加物料时发生错误：{e}")
 
     def daily_apply_filters(self):
         """应用搜索和筛选条件"""
@@ -561,6 +680,20 @@ class InventoryManagement(QWidget):
 
     def _render_daily_table(self, rows):
         """渲染日常登记表格"""
+        # 对数据进行排序：低于安全库存的排在前面
+        def sort_key(row):
+            qty = int(row.get("QtyOnHand") or 0)
+            safety_stock = int(row.get("SafetyStock") or 0)
+            # 如果安全库存为0，则不算作低库存
+            if safety_stock == 0:
+                return (False, row["ItemCode"])  # 正常库存，按编码排序
+            # 低于安全库存的排在前面
+            is_low_stock = qty < safety_stock
+            return (is_low_stock, row["ItemCode"])  # 低库存优先，然后按编码排序
+        
+        # 按排序键排序，低库存在前
+        rows.sort(key=sort_key, reverse=True)
+        
         self.tbl_daily.setRowCount(len(rows))
         for r, row_data in enumerate(rows):
             # 重新创建表格项，并保存ItemId和ItemType数据
@@ -570,18 +703,40 @@ class InventoryManagement(QWidget):
             self.tbl_daily.setItem(r, 0, item_code_cell)
             
             self.tbl_daily.setItem(r, 1, QTableWidgetItem(row_data["CnName"]))
-            self.tbl_daily.setItem(r, 2, QTableWidgetItem(str(int(row_data["QtyOnHand"] or 0))))
+            qty = int(row_data["QtyOnHand"] or 0)
+            qty_cell = QTableWidgetItem(str(qty))
+            self.tbl_daily.setItem(r, 2, qty_cell)
+            
             self.tbl_daily.setItem(r, 3, QTableWidgetItem(row_data["Unit"]))
             self.tbl_daily.setItem(r, 4, QTableWidgetItem(row_data["Location"]))
-            self.tbl_daily.setItem(r, 5, QTableWidgetItem(str(int(row_data["SafetyStock"] or 0))))
+            ss = int(row_data["SafetyStock"] or 0)
+            ss_cell = QTableWidgetItem(str(ss))
+            self.tbl_daily.setItem(r, 5, ss_cell)
+            
+            # 检查是否低于安全库存
+            if ss > 0 and qty < ss:
+                # 低于安全库存：整行背景标红
+                for col in range(6):  # 6列（不包括操作列）
+                    item = self.tbl_daily.item(r, col)
+                    if item:
+                        item.setBackground(QColor(255, 200, 200))  # 浅红色背景
+                        if col == 2:  # 在手数量列
+                            item.setForeground(QColor(220, 20, 60))     # 红色文字
+                        elif col == 5:  # 安全库存列
+                            item.setForeground(QColor(220, 20, 60))     # 红色文字
+            else:
+                # 正常库存：绿色背景（仅在手数量列）
+                if qty > 0: 
+                    qty_cell.setBackground(QColor(198, 224, 180))
             
             # 重新创建操作按钮
             w = QWidget(); h = QHBoxLayout(w); h.setContentsMargins(0,0,0,0)
-            b_in = QPushButton("入库"); b_out = QPushButton("出库"); b_edit = QPushButton("编辑")
+            b_in = QPushButton("入库"); b_out = QPushButton("出库"); b_edit = QPushButton("编辑"); b_delete = QPushButton("删除")
             b_in.clicked.connect(lambda _, rec=row_data: self.row_in(rec))
             b_out.clicked.connect(lambda _, rec=row_data: self.row_out(rec))
             b_edit.clicked.connect(lambda _, rec=row_data: self.row_edit(rec))
-            h.addWidget(b_in); h.addWidget(b_out); h.addWidget(b_edit)
+            b_delete.clicked.connect(lambda _, rec=row_data: self.row_delete(rec))
+            h.addWidget(b_in); h.addWidget(b_out); h.addWidget(b_edit); h.addWidget(b_delete)
             self.tbl_daily.setCellWidget(r, 6, w)
 
     def daily_clear_filters(self):
@@ -661,12 +816,26 @@ class InventoryManagement(QWidget):
         btn_q = QPushButton("查询"); btn_q.clicked.connect(self.load_tx); h.addWidget(btn_q)
         layout.addWidget(filt)
 
-        self.tbl_tx = QTableWidget(0,  nine:=9)
-        self.tbl_tx.setHorizontalHeaderLabels(["日期","类型","仓库","库位","物料编码","名称","数量","单价","备注"])
+        self.tbl_tx = QTableWidget(0, 9)
+        self.tbl_tx.setHorizontalHeaderLabels(["日期","类型","仓库","库位","物料编码","物料名称","数量","单价","备注"])
         header = self.tbl_tx.horizontalHeader()
-        for c in range(nine):
+        for c in [0,1,2,3,4,6,7,8]:
             header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.Stretch)
+        
+        # 设置表格的大小策略，确保有足够的显示空间
+        self.tbl_tx.setMinimumHeight(300)  # 调整最小高度为300像素
+        self.tbl_tx.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 允许表格扩展
+        
+        # 设置合理的行高，避免行高过高
+        self.tbl_tx.verticalHeader().setDefaultSectionSize(30)  # 设置默认行高为30像素
+        self.tbl_tx.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # 固定行高
+        
+        # 设置表格字体大小
+        font = self.tbl_tx.font()
+        font.setPointSize(9)  # 设置字体大小为9pt
+        self.tbl_tx.setFont(font)
+        
         layout.addWidget(self.tbl_tx)
 
     def load_tx(self):
@@ -765,6 +934,20 @@ class WarehouseManagerDialog(QDialog):
         self.tbl_wh.setHorizontalHeaderLabels(["ID","编码","名称","备注"])
         self.tbl_wh.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         for c in [1,2,3]: self.tbl_wh.horizontalHeader().setSectionResizeMode(c, QHeaderView.Stretch)
+        
+        # 设置表格的大小策略，确保有足够的显示空间
+        self.tbl_wh.setMinimumHeight(200)  # 设置最小高度
+        self.tbl_wh.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 允许表格扩展
+        
+        # 设置合理的行高，避免行高过高
+        self.tbl_wh.verticalHeader().setDefaultSectionSize(25)  # 设置默认行高为25像素
+        self.tbl_wh.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # 固定行高
+        
+        # 设置表格字体大小
+        font = self.tbl_wh.font()
+        font.setPointSize(9)  # 设置字体大小为9pt
+        self.tbl_wh.setFont(font)
+        
         v.addWidget(self.tbl_wh)
 
         mid = QHBoxLayout(); v.addLayout(mid)
@@ -777,6 +960,20 @@ class WarehouseManagerDialog(QDialog):
         self.tbl_items.setHorizontalHeaderLabels(["ItemId","编码","名称","单位","类型"])
         for c in range(5): self.tbl_items.horizontalHeader().setSectionResizeMode(c, QHeaderView.ResizeToContents)
         self.tbl_items.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        
+        # 设置表格的大小策略，确保有足够的显示空间
+        self.tbl_items.setMinimumHeight(200)  # 设置最小高度
+        self.tbl_items.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 允许表格扩展
+        
+        # 设置合理的行高，避免行高过高
+        self.tbl_items.verticalHeader().setDefaultSectionSize(25)  # 设置默认行高为25像素
+        self.tbl_items.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)  # 固定行高
+        
+        # 设置表格字体大小
+        font = self.tbl_items.font()
+        font.setPointSize(9)  # 设置字体大小为9pt
+        self.tbl_items.setFont(font)
+        
         v.addWidget(self.tbl_items)
 
         btns = QDialogButtonBox(QDialogButtonBox.Close)

@@ -1328,7 +1328,213 @@ class DatabaseManagement(QWidget):
     
     def restore_database(self):
         """恢复数据库"""
-        QMessageBox.information(self, "信息", "恢复数据库功能开发中...")
+        try:
+            from app.db import DatabaseManager
+            db_manager = DatabaseManager()
+            
+            # 选择要恢复的备份文件
+            backup_path, _ = QFileDialog.getOpenFileName(
+                self, 
+                "选择要恢复的备份文件", 
+                "",
+                "Database Files (*.db);;All Files (*)"
+            )
+            
+            if not backup_path:
+                return
+            
+            # 验证备份文件
+            if not os.path.exists(backup_path):
+                QMessageBox.warning(self, "错误", "选择的备份文件不存在")
+                return
+            
+            # 验证备份文件是否为有效的SQLite数据库
+            try:
+                test_conn = sqlite3.connect(backup_path)
+                cursor = test_conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = cursor.fetchall()
+                
+                # 获取备份文件的基本信息
+                backup_info = {}
+                for table_name, in tables:
+                    cursor = test_conn.execute(f"SELECT COUNT(*) FROM {table_name}")
+                    row_count = cursor.fetchone()[0]
+                    backup_info[table_name] = row_count
+                
+                test_conn.close()
+                
+                if not tables:
+                    QMessageBox.warning(self, "错误", "选择的文件不是有效的数据库文件或数据库为空")
+                    return
+                    
+            except sqlite3.Error as e:
+                QMessageBox.warning(self, "错误", f"选择的文件不是有效的SQLite数据库: {str(e)}")
+                return
+            
+            # 显示备份文件详细信息
+            backup_details = "\n".join([f"  • {table}: {count} 行" for table, count in backup_info.items()])
+            
+            # 确认恢复操作
+            reply = QMessageBox.question(
+                self, 
+                "确认恢复数据库", 
+                f"确定要恢复数据库吗？\n\n"
+                f"⚠️  警告：此操作将完全替换当前数据库！\n"
+                f"当前数据库的所有数据将被备份文件的内容覆盖。\n\n"
+                f"📁 备份文件: {os.path.basename(backup_path)}\n"
+                f"📊 包含 {len(tables)} 个表:\n{backup_details}\n\n"
+                f"此操作不可撤销！确定要继续吗？",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                # 显示进度对话框
+                progress_dialog = QMessageBox(self)
+                progress_dialog.setWindowTitle("正在恢复数据库")
+                progress_dialog.setText("正在恢复数据库，请稍候...\n\n注意：请勿关闭此窗口，恢复完成后会自动关闭")
+                progress_dialog.setStandardButtons(QMessageBox.Ok)
+                progress_dialog.setModal(False)  # 非模态，允许用户看到进度
+                progress_dialog.show()
+                
+                # 处理事件，让进度对话框显示
+                QApplication.processEvents()
+                
+                try:
+                    # 关闭所有数据库连接
+                    try:
+                        # 强制关闭当前连接
+                        import gc
+                        gc.collect()
+                    except:
+                        pass
+                    
+                    # 备份当前数据库到程序运行目录
+                    try:
+                        import shutil
+                        from pathlib import Path
+                        
+                        # 获取程序运行目录
+                        program_dir = Path.cwd()
+                        
+                        # 生成备份文件名：当前数据库名_恢复前备份_时间戳.db
+                        current_db_name = db_manager.db_path.stem  # 获取不带扩展名的文件名
+                        backup_filename = f"{current_db_name}_恢复前备份_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                        current_backup_path = program_dir / backup_filename
+                        
+                        if db_manager.db_path.exists():
+                            # 复制当前数据库到程序运行目录
+                            shutil.copy2(db_manager.db_path, current_backup_path)
+                            print(f"✅ 当前数据库已备份到: {current_backup_path}")
+                            
+                            # 更新进度对话框信息
+                            progress_dialog.setText(f"正在恢复数据库，请稍候...\n\n已备份当前数据库到:\n{backup_filename}")
+                            QApplication.processEvents()
+                        else:
+                            print("⚠️ 当前数据库文件不存在，跳过备份")
+                            current_backup_path = None
+                            
+                    except Exception as e:
+                        QMessageBox.warning(self, "警告", f"无法备份当前数据库: {str(e)}")
+                        current_backup_path = None
+                    
+                    # 恢复数据库
+                    import shutil
+                    
+                    # 删除当前数据库文件
+                    if db_manager.db_path.exists():
+                        db_manager.db_path.unlink()
+                    
+                    # 复制备份文件到当前数据库位置
+                    shutil.copy2(backup_path, db_manager.db_path)
+                    
+                    # 验证恢复后的数据库
+                    test_conn = sqlite3.connect(db_manager.db_path)
+                    cursor = test_conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                    restored_tables = cursor.fetchall()
+                    
+                    # 获取恢复后的表信息
+                    restored_info = {}
+                    for table_name, in restored_tables:
+                        cursor = test_conn.execute(f"SELECT COUNT(*) FROM {table_name}")
+                        row_count = cursor.fetchone()[0]
+                        restored_info[table_name] = row_count
+                    
+                    test_conn.close()
+                    
+                    # 关闭进度对话框
+                    progress_dialog.close()
+                    
+                    # 刷新界面
+                    self.load_database_info()
+                    self.load_table_list()
+                    
+                    # 清空当前选择
+                    self.current_table = None
+                    self.current_table_label.setText("当前表: 未选择")
+                    self.data_table.setRowCount(0)
+                    self.data_table.setColumnCount(0)
+                    self.structure_table.setRowCount(0)
+                    
+                    self.status_label.setText(f"✅ 数据库恢复成功！恢复了 {len(restored_tables)} 个表")
+                    
+                    # 显示恢复成功信息
+                    restored_details = "\n".join([f"  • {table}: {count} 行" for table, count in restored_info.items()])
+                    
+                    # 构建成功信息
+                    success_message = f"✅ 数据库恢复成功！\n\n"
+                    success_message += f"📊 恢复了 {len(restored_tables)} 个表:\n{restored_details}\n\n"
+                    success_message += f"🔄 当前数据库已更新为备份文件的内容。\n\n"
+                    
+                    if current_backup_path and current_backup_path.exists():
+                        success_message += f"💾 重要提示：原数据库已自动备份到程序目录:\n"
+                        success_message += f"   文件名：{current_backup_path.name}\n"
+                        success_message += f"   位置：{current_backup_path.parent}\n\n"
+                        success_message += f"📝 如需恢复原数据，请使用此备份文件。"
+                    else:
+                        success_message += f"⚠️ 警告：原数据库备份失败，请手动检查数据完整性"
+                    
+                    QMessageBox.information(
+                        self, 
+                        "✅ 恢复成功", 
+                        success_message
+                    )
+                    
+                except Exception as e:
+                    # 关闭进度对话框
+                    progress_dialog.close()
+                    
+                    # 恢复失败，尝试恢复原数据库
+                    try:
+                        if current_backup_path and current_backup_path.exists():
+                            shutil.copy2(current_backup_path, db_manager.db_path)
+                            QMessageBox.warning(
+                                self, 
+                                "❌ 恢复失败", 
+                                f"恢复失败，已恢复原数据库。\n\n"
+                                f"错误详情: {str(e)}\n\n"
+                                f"原数据库备份位置:\n{current_backup_path.name}"
+                            )
+                        else:
+                            QMessageBox.critical(
+                                self, 
+                                "💥 严重错误", 
+                                f"恢复失败且无法恢复原数据库！\n\n"
+                                f"错误详情: {str(e)}\n\n"
+                                f"请手动恢复数据库文件！"
+                            )
+                    except Exception as restore_error:
+                        QMessageBox.critical(
+                            self, 
+                            "💥 严重错误", 
+                            f"恢复失败且无法恢复原数据库！\n\n"
+                            f"恢复错误: {str(e)}\n"
+                            f"回滚错误: {str(restore_error)}\n\n"
+                            f"请手动恢复数据库文件！"
+                        )
+                
+        except Exception as e:
+            QMessageBox.warning(self, "错误", f"恢复数据库失败: {str(e)}")
     
     def open_table(self, table_name):
         """打开表"""

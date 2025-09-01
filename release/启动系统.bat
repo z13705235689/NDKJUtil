@@ -1,0 +1,3 @@
+@echo off
+echo 正在启动 NDKJ_MES 系统...
+start "" "NDKJ_MES.exe"

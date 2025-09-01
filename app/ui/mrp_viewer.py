@@ -51,6 +51,7 @@ class MRPViewer(QWidget):
         super().__init__()
         self._build_ui()
         self._thread = None
+        self._signal_connected = False  # 跟踪信号连接状态
         self._load_available_data()
 
     def _build_ui(self):
@@ -113,6 +114,25 @@ class MRPViewer(QWidget):
         self.parent_item_filter_edit.setPlaceholderText("输入成品编码或名称进行筛选（留空表示所有成品）")
         self.parent_item_filter_edit.setMinimumWidth(300)
         order_layout.addWidget(self.parent_item_filter_edit)
+        
+        # 添加刷新按钮
+        refresh_btn = QPushButton("刷新订单版本")
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+        """)
+        refresh_btn.clicked.connect(self.refresh_order_versions)
+        order_layout.addWidget(refresh_btn)
         
         order_layout.addStretch()
         cly.addLayout(order_layout)
@@ -215,7 +235,14 @@ class MRPViewer(QWidget):
 
     def _load_available_data(self):
         """加载可用的客户订单版本和成品信息"""
+        self.refresh_order_versions()
+        
+    def refresh_order_versions(self):
+        """刷新订单版本列表"""
         try:
+            # 保存当前选中的版本
+            current_import_id = self.order_version_combo.currentData()
+            
             # 加载客户订单版本
             versions = MRPService.get_available_import_versions()
             self.order_version_combo.clear()
@@ -225,8 +252,23 @@ class MRPViewer(QWidget):
                 display_text = f"{version['ImportId']} - {version['FileName']} ({version['ImportDate']})"
                 self.order_version_combo.addItem(display_text, version['ImportId'])
             
-            # 连接订单版本选择变化事件
+            # 尝试恢复之前选中的版本
+            if current_import_id is not None:
+                for i in range(self.order_version_combo.count()):
+                    if self.order_version_combo.itemData(i) == current_import_id:
+                        self.order_version_combo.setCurrentIndex(i)
+                        break
+            
+            # 连接订单版本选择变化事件（避免重复连接）
+            if self._signal_connected:
+                try:
+                    self.order_version_combo.currentIndexChanged.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
+                self._signal_connected = False
+            
             self.order_version_combo.currentIndexChanged.connect(self.on_order_version_changed)
+            self._signal_connected = True
                 
         except Exception as e:
             print(f"加载客户订单版本失败: {e}")
@@ -309,43 +351,78 @@ class MRPViewer(QWidget):
         weeks = data.get("weeks", [])
         rows = data.get("rows", [])
 
+        # 构建年份分组和合计列
+        colspec = self._build_week_columns_with_totals(weeks)
+        
         # 根据计算类型设置不同的列标题
         calc_type = self.calc_type_combo.currentText()
         if calc_type == "零部件MRP":
-            # 零部件MRP：物料编码、名称、类型、行别、期初库存、各周
-            headers = ["物料编码", "物料名称", "物料类型", "行别", "期初库存"] + weeks
+            # 零部件MRP：物料编码、名称、类型、行别、期初库存、各周、合计
+            fixed_headers = ["物料编码", "物料名称", "物料类型", "行别", "期初库存"]
         else:
-            # 成品MRP：物料编码、名称、类型、行别、期初库存、各周
-            headers = ["成品编码", "成品名称", "成品类型", "行别", "期初库存"] + weeks
-            
-        self.tbl.setColumnCount(len(headers))
-        self.tbl.setHorizontalHeaderLabels(headers)
+            # 成品MRP：物料编码、名称、类型、行别、期初库存、各周、合计
+            fixed_headers = ["成品编码", "成品名称", "成品类型", "行别", "期初库存"]
+        
+        # 设置列数和标题
+        headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
+        self.tbl.setColumnCount(headers_count)
+        
+        # 设置固定列标题
+        for i, title in enumerate(fixed_headers):
+            item = QTableWidgetItem(title)
+            self.tbl.setHorizontalHeaderItem(i, item)
+        
+        # 设置周列和年份合计列标题
+        base_col = len(fixed_headers)
+        for i, (kind, val) in enumerate(colspec):
+            if kind == "week":
+                it = QTableWidgetItem(val)  # val is already CW format
+                # 设置日期作为用户数据
+                date_str = self._convert_cw_to_date(val)
+                it.setData(Qt.UserRole, date_str)
+            else:
+                it = QTableWidgetItem(f"{val}合计")
+            self.tbl.setHorizontalHeaderItem(base_col + i, it)
+        
+        # 设置总计列标题
+        self.tbl.setHorizontalHeaderItem(headers_count - 1, QTableWidgetItem("Total"))
 
         # 增加一行用于显示日期
-        self.tbl.setRowCount(len(rows) + 1)
+        self.tbl.setRowCount(len(rows) + 2)  # +1 for date row, +1 for total row
         
         # 设置颜色
-        green_bg = QBrush(QColor(235, 252, 239))
-        red_bg = QBrush(QColor(255, 235, 238))
-        blue_bg = QBrush(QColor(235, 245, 251))
-        date_bg = QBrush(QColor(248, 249, 250))  # 日期行的背景色
+        green_bg = QBrush(QColor(235, 252, 239))  # 生产计划绿色
+        red_bg = QBrush(QColor(255, 235, 238))     # 库存不足红色
+        blue_bg = QBrush(QColor(221, 235, 247))   # 合计列蓝色
+        date_bg = QBrush(QColor(248, 249, 250))   # 日期行的背景色
 
         # 第一行：显示CW对应的日期
         date_row = 0
-        for ci, w in enumerate(weeks, start=5):
-            # 将CW转换为对应的日期
-            date_str = self._convert_cw_to_date(w)
-            it = self._set_item(date_row, ci, date_str)
-            it.setBackground(date_bg)
-            # 设置日期行的字体样式
-            font = it.font()
-            font.setPointSize(9)
-            it.setFont(font)
-        
-        # 设置日期行的基本信息列
-        for c in range(5):
+        for c in range(base_col):  # 基本信息列
             it = self._set_item(date_row, c, "")
             it.setBackground(date_bg)
+        
+        for i, (kind, val) in enumerate(colspec):
+            if kind == "week":
+                # 将CW转换为对应的日期
+                date_str = self._convert_cw_to_date(val)
+                it = self._set_item(date_row, base_col + i, date_str)
+                it.setBackground(date_bg)
+                # 设置日期行的字体样式
+                font = it.font()
+                font.setPointSize(9)
+                it.setFont(font)
+            else:
+                # 年份合计列显示年份
+                it = self._set_item(date_row, base_col + i, str(val))
+                it.setBackground(date_bg)
+                font = it.font()
+                font.setPointSize(9)
+                it.setFont(font)
+        
+        # 总计列
+        it = self._set_item(date_row, headers_count - 1, "")
+        it.setBackground(date_bg)
 
         # 数据行（从第二行开始）
         for r, row in enumerate(rows):
@@ -358,37 +435,66 @@ class MRPViewer(QWidget):
             self._set_item(actual_row, 3, row.get("RowType", ""))
             self._set_item(actual_row, 4, self._fmt(row.get("StartOnHand", 0)))
 
-            # 根据计算类型设置不同的行底色
-            if calc_type == "零部件MRP":
-                # 零部件MRP：库存行上绿；如果库存为负则对应单元格染红
-                is_stock_row = (row.get("RowType") == "即时库存")
-                if is_stock_row:
-                    for c in range(0, 5):
-                        it = self.tbl.item(actual_row, c)
-                        if it: it.setBackground(green_bg)
-            else:
-                # 成品MRP：所有行都上蓝色背景
-                for c in range(0, 5):
-                    it = self.tbl.item(actual_row, c)
-                    if it: it.setBackground(blue_bg)
+            # 基本信息列不设置背景色
 
-            # 周数据列
-            for ci, w in enumerate(weeks, start=5):
-                val = float(row["cells"].get(w, 0.0))
-                it = self._set_item(actual_row, ci, self._fmt(val))
-                
-                if calc_type == "零部件MRP":
-                    # 零部件MRP：库存为负时染红
+            # 周数据列和年份合计列
+            row_total = 0
+            cursor_col = base_col
+            for kind, val in colspec:
+                if kind == "week":
+                    val_float = float(row["cells"].get(val, 0.0))
+                    row_total += val_float
+                    it = self._set_item(actual_row, cursor_col, self._fmt(val_float))
+                    
+                    # 新的着色规则：
+                    # 1. 生产计划行（非即时库存）且数值大于0时标绿色
+                    # 2. 即时库存行且数值小于0时标红色
                     is_stock_row = (row.get("RowType") == "即时库存")
-                    if is_stock_row and val < 0:
-                        it.setBackground(red_bg)
+                    if not is_stock_row and val_float > 0:
+                        it.setBackground(green_bg)  # 生产计划标绿
+                    elif is_stock_row and val_float < 0:
+                        it.setBackground(red_bg)    # 库存不足标红
                 else:
-                    # 成品MRP：即时库存行为负数时染红，生产计划行大于0时染绿
-                    is_stock_row = (row.get("RowType") == "即时库存")
-                    if is_stock_row and val < 0:
-                        it.setBackground(red_bg)  # 库存不足，标红
-                    elif not is_stock_row and val > 0:
-                        it.setBackground(green_bg)  # 有需求，标绿
+                    # 年份合计列
+                    year_total = sum(float(row["cells"].get(w, 0.0)) for w in self._get_weeks_in_year(val))
+                    it = QTableWidgetItem(self._fmt(year_total))
+                    it.setBackground(blue_bg)  # 合计列标蓝色
+                    font = it.font()
+                    font.setBold(True)
+                    it.setFont(font)
+                    self.tbl.setItem(actual_row, cursor_col, it)
+                    row_total += year_total
+                
+                cursor_col += 1
+
+            # 总计列
+            total_item = QTableWidgetItem(self._fmt(row_total))
+            total_item.setBackground(blue_bg)  # 总计列标蓝色
+            font = total_item.font()
+            font.setBold(True)
+            total_item.setFont(font)
+            self.tbl.setItem(actual_row, headers_count - 1, total_item)
+
+        # 总计行
+        total_row = len(rows) + 1
+        self.tbl.setItem(total_row, 0, QTableWidgetItem("TOTAL"))
+        
+        # 只从周列开始统计（前5列不算）
+        for col in range(base_col, headers_count):
+            s = 0
+            for r in range(1, total_row):  # 从1开始，跳过日期行
+                it = self.tbl.item(r, col)
+                try:
+                    if it and it.text().strip():
+                        s += float(it.text().replace(',', ''))
+                except:
+                    pass
+            item = QTableWidgetItem(self._fmt(s))
+            font = item.font()
+            font.setBold(True)
+            item.setFont(font)
+            item.setBackground(blue_bg)  # 总计行标蓝色
+            self.tbl.setItem(total_row, col, item)
 
         # 小优化：把计划/库存两行当作一个分组阅读
         if calc_type == "零部件MRP":
@@ -408,6 +514,85 @@ class MRPViewer(QWidget):
         if abs(v - int(v)) < 1e-6:
             return f"{int(v):,}"
         return f"{v:,.3f}"
+
+    def _build_week_columns_with_totals(self, weeks: list) -> list:
+        """构建周列和年份合计列"""
+        from collections import defaultdict
+        from datetime import datetime, timedelta
+        
+        # 按年份分组
+        by_year = defaultdict(list)
+        
+        # 获取开始日期和结束日期来确定年份范围
+        start_date = self.dt_start.date()
+        end_date = self.dt_end.date()
+        
+        # 从日期范围推断年份
+        start_year = start_date.year()
+        end_year = end_date.year()
+        
+        # 如果跨年，则按年份分组
+        if start_year == end_year:
+            # 同一年，所有周都归到这一年
+            for week in weeks:
+                by_year[start_year].append(week)
+        else:
+            # 跨年，需要根据CW的实际日期来分组
+            # 这里简化处理，按CW的顺序分组
+            # 假设前半部分属于开始年份，后半部分属于结束年份
+            mid_point = len(weeks) // 2
+            for i, week in enumerate(weeks):
+                if i < mid_point:
+                    by_year[start_year].append(week)
+                else:
+                    by_year[end_year].append(week)
+        
+        # 构建列规范
+        colspec = []
+        years = sorted(by_year.keys())
+        for year in years:
+            # 添加该年的所有周
+            for week in by_year[year]:
+                colspec.append(("week", week))
+            # 添加年份合计列
+            colspec.append(("total", year))
+        
+        return colspec
+
+    def _get_weeks_in_year(self, year: int) -> list:
+        """获取指定年份的所有周"""
+        from collections import defaultdict
+        
+        # 从当前数据中获取该年份的所有周
+        if hasattr(self, '_current_data'):
+            weeks = self._current_data.get("weeks", [])
+            by_year = defaultdict(list)
+            
+            # 获取开始日期和结束日期来确定年份范围
+            start_date = self.dt_start.date()
+            end_date = self.dt_end.date()
+            
+            # 从日期范围推断年份
+            start_year = start_date.year()
+            end_year = end_date.year()
+            
+            # 如果跨年，则按年份分组
+            if start_year == end_year:
+                # 同一年，所有周都归到这一年
+                for week in weeks:
+                    by_year[start_year].append(week)
+            else:
+                # 跨年，需要根据CW的顺序分组
+                mid_point = len(weeks) // 2
+                for i, week in enumerate(weeks):
+                    if i < mid_point:
+                        by_year[start_year].append(week)
+                    else:
+                        by_year[end_year].append(week)
+            
+            return by_year.get(year, [])
+        
+        return []
 
     def _convert_cw_to_date(self, cw: str) -> str:
         """将CW格式转换为对应的日期字符串"""
@@ -469,6 +654,9 @@ class MRPViewer(QWidget):
         rows = data.get("rows", [])
         calc_type = self.calc_type_combo.currentText()
         
+        # 构建年份分组和合计列
+        colspec = self._build_week_columns_with_totals(weeks)
+        
         # 创建工作簿和工作表
         wb = openpyxl.Workbook()
         ws = wb.active
@@ -477,13 +665,14 @@ class MRPViewer(QWidget):
         # 定义颜色样式
         green_fill = PatternFill(start_color="E7F5E7", end_color="E7F5E7", fill_type="solid")
         red_fill = PatternFill(start_color="FFEBEE", end_color="FFEBEE", fill_type="solid")
-        blue_fill = PatternFill(start_color="EBF3FB", end_color="EBF3FB", fill_type="solid")
+        blue_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
         date_fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
         
-        # 定义字体样式
-        header_font = Font(bold=True, size=12)
-        date_font = Font(size=9)
-        normal_font = Font(size=10)
+        # 定义字体样式 - 统一使用Arial字体
+        header_font = Font(name="Arial", bold=True, size=12)
+        date_font = Font(name="Arial", size=9)
+        normal_font = Font(name="Arial", size=10)
+        total_font = Font(name="Arial", bold=True, size=10)
         
         # 定义对齐方式
         center_alignment = Alignment(horizontal="center", vertical="center")
@@ -499,32 +688,64 @@ class MRPViewer(QWidget):
         
         # 设置列标题
         if calc_type == "零部件MRP":
-            headers = ["物料编码", "物料名称", "物料类型", "行别", "期初库存"] + weeks
+            fixed_headers = ["物料编码", "物料名称", "物料类型", "行别", "期初库存"]
         else:
-            headers = ["成品编码", "成品名称", "成品类型", "行别", "期初库存"] + weeks
+            fixed_headers = ["成品编码", "成品名称", "成品类型", "行别", "期初库存"]
         
-        # 写入列标题
-        for col, header in enumerate(headers, 1):
+        headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
+        
+        # 写入固定列标题
+        for col, header in enumerate(fixed_headers, 1):
             cell = ws.cell(row=1, column=col, value=header)
             cell.font = header_font
             cell.alignment = center_alignment
             cell.border = thin_border
             cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
         
+        # 写入周列和年份合计列标题
+        base_col = len(fixed_headers)
+        for i, (kind, val) in enumerate(colspec):
+            col = base_col + i + 1
+            if kind == "week":
+                cell = ws.cell(row=1, column=col, value=val)
+            else:
+                cell = ws.cell(row=1, column=col, value=f"{val}合计")
+            cell.font = header_font
+            cell.alignment = center_alignment
+            cell.border = thin_border
+            cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
+        
+        # 写入总计列标题
+        total_col = headers_count
+        cell = ws.cell(row=1, column=total_col, value="Total")
+        cell.font = header_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+        cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
+        
         # 写入日期行（第二行）
         row_num = 2
-        for col in range(1, 6):  # 基本信息列
+        for col in range(1, base_col + 1):  # 基本信息列
             cell = ws.cell(row=row_num, column=col, value="")
             cell.fill = date_fill
             cell.border = thin_border
         
-        for col, week in enumerate(weeks, 6):  # 周数据列
-            date_str = self._convert_cw_to_date(week)
-            cell = ws.cell(row=row_num, column=col, value=date_str)
+        for i, (kind, val) in enumerate(colspec):
+            col = base_col + i + 1
+            if kind == "week":
+                date_str = self._convert_cw_to_date(val)
+                cell = ws.cell(row=row_num, column=col, value=date_str)
+            else:
+                cell = ws.cell(row=row_num, column=col, value=str(val))
             cell.font = date_font
             cell.alignment = center_alignment
             cell.fill = date_fill
             cell.border = thin_border
+        
+        # 总计列
+        cell = ws.cell(row=row_num, column=total_col, value="")
+        cell.fill = date_fill
+        cell.border = thin_border
         
         # 写入数据行
         for row_data in rows:
@@ -544,37 +765,70 @@ class MRPViewer(QWidget):
                 cell.font = normal_font
                 cell.alignment = center_alignment
                 cell.border = thin_border
-                
-                # 根据计算类型设置背景色
-                if calc_type == "零部件MRP":
-                    if row_data.get("RowType") == "即时库存":
-                        cell.fill = green_fill
-                else:  # 成品MRP
-                    cell.fill = blue_fill
+                # 基本信息列不设置背景色
             
-            # 周数据列
-            for col, week in enumerate(weeks, 6):
-                val = float(row_data["cells"].get(week, 0.0))
-                cell = ws.cell(row=row_num, column=col, value=val)
-                cell.font = normal_font
-                cell.alignment = center_alignment
-                cell.border = thin_border
-                
-                # 根据计算类型和数值设置背景色
-                if calc_type == "零部件MRP":
-                    if row_data.get("RowType") == "即时库存" and val < 0:
-                        cell.fill = red_fill  # 库存不足，标红
-                else:  # 成品MRP
-                    if row_data.get("RowType") == "即时库存" and val < 0:
-                        cell.fill = red_fill  # 库存不足，标红
-                    elif row_data.get("RowType") != "即时库存" and val > 0:
-                        cell.fill = green_fill  # 有需求，标绿
+            # 周数据列和年份合计列
+            row_total = 0
+            for i, (kind, val) in enumerate(colspec):
+                col = base_col + i + 1
+                if kind == "week":
+                    val_float = float(row_data["cells"].get(val, 0.0))
+                    row_total += val_float
+                    cell = ws.cell(row=row_num, column=col, value=val_float)
+                    cell.font = normal_font
+                    cell.alignment = center_alignment
+                    cell.border = thin_border
+                    
+                    # 新的着色规则：
+                    # 1. 生产计划行（非即时库存）且数值大于0时标绿色
+                    # 2. 即时库存行且数值小于0时标红色
+                    is_stock_row = (row_data.get("RowType") == "即时库存")
+                    if not is_stock_row and val_float > 0:
+                        cell.fill = green_fill  # 生产计划标绿
+                    elif is_stock_row and val_float < 0:
+                        cell.fill = red_fill    # 库存不足标红
+                else:
+                    # 年份合计列
+                    year_total = sum(float(row_data["cells"].get(w, 0.0)) for w in self._get_weeks_in_year(val))
+                    row_total += year_total
+                    cell = ws.cell(row=row_num, column=col, value=year_total)
+                    cell.font = total_font
+                    cell.alignment = center_alignment
+                    cell.fill = blue_fill  # 合计列标蓝色
+                    cell.border = thin_border
+            
+            # 总计列
+            cell = ws.cell(row=row_num, column=total_col, value=row_total)
+            cell.font = total_font
+            cell.alignment = center_alignment
+            cell.fill = blue_fill  # 总计列标蓝色
+            cell.border = thin_border
+        
+        # 总计行
+        total_row = row_num + 1
+        ws.cell(row=total_row, column=1, value="TOTAL")
+        
+        # 只从周列开始统计（前5列不算）
+        for col in range(base_col + 1, total_col + 1):
+            s = 0
+            for r in range(3, total_row):  # 从第3行开始，跳过标题行和日期行
+                cell = ws.cell(row=r, column=col)
+                if cell.value is not None:
+                    try:
+                        s += float(cell.value)
+                    except:
+                        pass
+            cell = ws.cell(row=total_row, column=col, value=s)
+            cell.font = total_font
+            cell.alignment = center_alignment
+            cell.fill = blue_fill  # 总计行标蓝色
+            cell.border = thin_border
         
         # 调整列宽
-        for col in range(1, len(headers) + 1):
-            if col <= 5:  # 基本信息列
+        for col in range(1, headers_count + 1):
+            if col <= base_col:  # 基本信息列
                 ws.column_dimensions[get_column_letter(col)].width = 15
-            else:  # 周数据列
+            else:  # 周数据列和合计列
                 ws.column_dimensions[get_column_letter(col)].width = 12
         
         # 保存文件

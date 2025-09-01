@@ -21,6 +21,12 @@ class WarehouseService:
         return dict(row) if row else None
 
     @staticmethod
+    def get_by_code(warehouse_code: str) -> Optional[Dict]:
+        """根据仓库编码获取仓库信息"""
+        row = query_one("SELECT * FROM Warehouses WHERE Code=? AND IsActive=1", (warehouse_code,))
+        return dict(row) if row else None
+
+    @staticmethod
     def create(code: str, name: str, remark: str="") -> int:
         execute("INSERT INTO Warehouses(Code,Name,Remark) VALUES(?,?,?)", (code, name, remark))
         r = query_one("SELECT last_insert_rowid() AS i"); return r["i"]
@@ -95,6 +101,24 @@ class WarehouseService:
     def remove_item(warehouse_id: int, item_id: int):
         execute("DELETE FROM WarehouseItems WHERE WarehouseId=? AND ItemId=?", (warehouse_id,item_id))
     
+    @staticmethod
+    def remove_item_from_warehouse(item_id: int, warehouse_name: str):
+        """根据仓库名称和物料ID删除物料"""
+        # 先获取仓库ID
+        warehouse = query_one("SELECT WarehouseId FROM Warehouses WHERE Code=? AND IsActive=1", (warehouse_name,))
+        if not warehouse:
+            raise ValueError(f"仓库 '{warehouse_name}' 不存在或已停用")
+        
+        warehouse_id = warehouse["WarehouseId"]
+        
+        # 删除仓库物料关系
+        deleted_count = execute("DELETE FROM WarehouseItems WHERE WarehouseId=? AND ItemId=?", (warehouse_id, item_id))
+        
+        if deleted_count == 0:
+            raise ValueError(f"物料在仓库 '{warehouse_name}' 中不存在")
+        
+        return deleted_count
+
     @staticmethod
     def add_items_batch(warehouse_id: int, item_ids: List[int]) -> int:
         """批量添加物料到仓库"""

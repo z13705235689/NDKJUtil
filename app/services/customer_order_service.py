@@ -338,6 +338,13 @@ class CustomerOrderService:
             return []
 
     @staticmethod
+    def _get_project_match_code(item_number: str) -> str:
+        """获取产品型号的项目匹配码（去掉最后一位）"""
+        if not item_number or len(item_number) <= 1:
+            return item_number
+        return item_number[:-1]
+
+    @staticmethod
     def get_ndlutil_kanban_data(import_id: Optional[int] = None,
                                 start_date: Optional[str] = None,
                                 end_date: Optional[str] = None) -> List[Dict]:
@@ -380,7 +387,46 @@ class CustomerOrderService:
             """
             with get_conn() as conn:
                 cur = conn.execute(sql, params)
-                return [dict(r) for r in cur.fetchall()]
+                rows = [dict(r) for r in cur.fetchall()]
+                
+                # 按照项目匹配码排序
+                for row in rows:
+                    row['ProjectMatchCode'] = CustomerOrderService._get_project_match_code(row.get('ItemNumber', ''))
+                
+                # 定义项目优先级顺序（完整的产品型号）
+                priority_projects = [
+                    "R001H368", "R001H369",  # Passat
+                    "R001P320", "R001P313",  # Tiguan L
+                    "R001J139", "R001J140",  # A5L
+                    "R001J141", "R001J142"   # Lavida
+                ]
+                
+                def sort_key(row):
+                    project_code = row.get('ProjectMatchCode', '')
+                    supplier = row.get('SupplierCode', '')
+                    
+                    # 优先按项目优先级排序
+                    if project_code in priority_projects:
+                        priority_index = priority_projects.index(project_code)
+                    else:
+                        # 如果完整匹配失败，尝试基础项目匹配
+                        if len(project_code) > 1 and project_code[-1].isdigit():
+                            base = project_code[:-1]  # 去掉最后一位数字
+                        else:
+                            base = project_code
+                        
+                        base_priority_map = {
+                            "R001H36": 10,  # Passat
+                            "R001P32": 20,  # Tiguan L
+                            "R001J13": 30,  # A5L
+                            "R001J14": 40,  # Lavida
+                        }
+                        priority_index = base_priority_map.get(base, 999)  # 未匹配的项目排在最后
+                    
+                    return (priority_index, supplier, project_code, row.get('ItemNumber', ''))
+                
+                rows.sort(key=sort_key)
+                return rows
         except Exception as e:
             print("获取NDLUtil看板数据失败:", e)
             return []
@@ -431,7 +477,46 @@ class CustomerOrderService:
                     WHERE co.ImportId = ?
                     ORDER BY co.SupplierCode, col.ItemNumber, col.DeliveryDate
                 """, (import_id,))
-                return [dict(r) for r in cur.fetchall()]
+                rows = [dict(r) for r in cur.fetchall()]
+                
+                # 按照项目匹配码排序
+                for row in rows:
+                    row['ProjectMatchCode'] = CustomerOrderService._get_project_match_code(row.get('ItemNumber', ''))
+                
+                # 定义项目优先级顺序（完整的产品型号）
+                priority_projects = [
+                    "R001H368", "R001H369",  # Passat
+                    "R001P320", "R001P313",  # Tiguan L
+                    "R001J139", "R001J140",  # A5L
+                    "R001J141", "R001J142"   # Lavida
+                ]
+                
+                def sort_key(row):
+                    project_code = row.get('ProjectMatchCode', '')
+                    supplier = row.get('SupplierCode', '')
+                    
+                    # 优先按项目优先级排序
+                    if project_code in priority_projects:
+                        priority_index = priority_projects.index(project_code)
+                    else:
+                        # 如果完整匹配失败，尝试基础项目匹配
+                        if len(project_code) > 1 and project_code[-1].isdigit():
+                            base = project_code[:-1]  # 去掉最后一位数字
+                        else:
+                            base = project_code
+                        
+                        base_priority_map = {
+                            "R001H36": 10,  # Passat
+                            "R001P32": 20,  # Tiguan L
+                            "R001J13": 30,  # A5L
+                            "R001J14": 40,  # Lavida
+                        }
+                        priority_index = base_priority_map.get(base, 999)  # 未匹配的项目排在最后
+                    
+                    return (priority_index, supplier, project_code, row.get('ItemNumber', ''))
+                
+                rows.sort(key=sort_key)
+                return rows
         except Exception as e:
             print("获取版本订单明细数据失败:", e)
             return []

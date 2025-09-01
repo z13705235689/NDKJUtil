@@ -17,7 +17,7 @@ class InventoryService:
                               warehouse: Optional[str] = None,
                               item_types: Optional[List[str]] = None) -> List[Dict]:
         """获取库存余额（默认 RM/PKG）"""
-        where = ["i.IsActive = 1", "ib.ItemId = i.ItemId"]
+        where = ["i.IsActive = 1"]
         params: List = []
 
         if item_types:
@@ -25,20 +25,41 @@ class InventoryService:
             params.extend(item_types)
 
         if item_id:
-            where.append("ib.ItemId = ?")
+            where.append("i.ItemId = ?")
             params.append(item_id)
 
         if warehouse:
-            where.append("ib.Warehouse = ?")
-            params.append(warehouse)
-
-        sql = f"""
-            SELECT ib.*, i.ItemCode, i.CnName, i.ItemType, i.Unit, i.SafetyStock
-            FROM InventoryBalance ib
-            JOIN Items i ON ib.ItemId = i.ItemId
-            WHERE {' AND '.join(where)}
-            ORDER BY i.ItemType, i.ItemCode, ib.Warehouse, ib.Location
-        """
+            # 如果指定了仓库，只显示该仓库中确实存在的物料
+            sql = f"""
+                SELECT 
+                    i.ItemId,
+                    i.ItemCode, i.CnName, i.ItemType, i.Unit, i.SafetyStock,
+                    ? as Warehouse,
+                    COALESCE(ib.Location, '') as Location,
+                    COALESCE(ib.QtyOnHand, 0) as QtyOnHand,
+                    COALESCE(ib.UnitCost, 0) as UnitCost,
+                    COALESCE(ib.LastUpdated, CURRENT_TIMESTAMP) as LastUpdated
+                FROM Items i
+                JOIN WarehouseItems wi ON wi.ItemId = i.ItemId
+                JOIN Warehouses w ON wi.WarehouseId = w.WarehouseId
+                LEFT JOIN InventoryBalance ib ON ib.ItemId = i.ItemId AND ib.Warehouse = ?
+                WHERE {' AND '.join(where)} AND w.Code = ? AND w.IsActive = 1
+                ORDER BY i.ItemType, i.ItemCode, Warehouse, Location
+            """
+            params.insert(0, warehouse)  # 在开头插入仓库参数
+            params.append(warehouse)     # 在末尾也添加仓库参数
+            params.append(warehouse)     # 再添加一个仓库参数用于WHERE条件
+        else:
+            # 如果没有指定仓库，只显示有库存余额的记录
+            where.append("ib.ItemId = i.ItemId")
+            sql = f"""
+                SELECT ib.*, i.ItemCode, i.CnName, i.ItemType, i.Unit, i.SafetyStock
+                FROM InventoryBalance ib
+                JOIN Items i ON ib.ItemId = i.ItemId
+                WHERE {' AND '.join(where)}
+                ORDER BY i.ItemType, i.ItemCode, ib.Warehouse, ib.Location
+            """
+        
         return [dict(r) for r in query_all(sql, tuple(params))]
 
     @staticmethod
