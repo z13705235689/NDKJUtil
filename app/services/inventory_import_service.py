@@ -5,6 +5,7 @@ import re
 from typing import List, Dict, Tuple, Optional
 from app.services.inventory_service import InventoryService
 from app.services.item_service import ItemService
+from app.services.warehouse_service import WarehouseService
 
 class InventoryImportService:
     """库存导入服务"""
@@ -183,6 +184,9 @@ class InventoryImportService:
                 
                 if matched_item:
                     try:
+                        # 自动建立物料和仓库的关联关系
+                        WarehouseService.add_item_by_warehouse_name(warehouse, matched_item["ItemId"])
+                        
                         # 更新库存
                         current_qty = InventoryService.get_onhand(matched_item["ItemId"], warehouse)
                         diff = data["qty"] - current_qty
@@ -197,9 +201,9 @@ class InventoryImportService:
                         
                         # 生成消息
                         if len(data["rows"]) > 1:
-                            message = f"累计计算：{len(data['rows'])}行数据，总数量 {data['qty']}"
+                            message = f"累计计算：{len(data['rows'])}行数据，总数量 {data['qty']}，已自动关联到仓库"
                         else:
-                            message = f"库存已更新为 {data['qty']}"
+                            message = f"库存已更新为 {data['qty']}，已自动关联到仓库"
                         
                         results.append({
                             "item_code": data["item_code"],

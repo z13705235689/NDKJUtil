@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                QFormLayout, QTextEdit, QDialog, QCheckBox,
                                QDialogButtonBox, QGridLayout, QSpacerItem,
                                QSizePolicy, QScrollArea, QSplitter, QDateEdit,
-                               QTreeWidget, QTreeWidgetItem)
+                               QTreeWidget, QTreeWidgetItem, QProgressBar)
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont, QColor
 from app.services.bom_service import BomService
@@ -916,7 +916,7 @@ class MaterialSelectionDialog(QDialog):
         search_label.setStyleSheet("font-size: 14px; font-weight: 500;")
         
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("输入物料编码或名称搜索")
+        self.search_edit.setPlaceholderText("输入物料编码、名称、规格或品牌搜索")
         self.search_edit.textChanged.connect(self.filter_materials)
         
         search_layout.addWidget(search_label)
@@ -1057,7 +1057,7 @@ class MaterialSelectionDialog(QDialog):
         for row, material in enumerate(materials):
             # 添加复选框
             checkbox = QCheckBox()
-            checkbox.stateChanged.connect(lambda state, row=row: self.on_checkbox_changed(state, row))
+            checkbox.stateChanged.connect(lambda state, r=row: self.on_checkbox_changed(state, r))
             self.materials_table.setCellWidget(row, 0, checkbox)
             
             # 修复SQLite Row对象的访问方式
@@ -1074,21 +1074,37 @@ class MaterialSelectionDialog(QDialog):
             self.materials_table.setItem(row, 5, QTableWidgetItem(str(item_type)))
 
     def filter_materials(self, search_text):
-        """过滤物料"""
+        """过滤物料 - 支持物料编码、名称、规格、品牌的模糊搜索"""
         for row in range(self.materials_table.rowCount()):
-            # 修复表格项为空时的错误处理
+            # 获取所有搜索字段
             item_code_item = self.materials_table.item(row, 1)
             item_name_item = self.materials_table.item(row, 2)
+            item_spec_item = self.materials_table.item(row, 3)
+            item_brand_item = self.materials_table.item(row, 4)
             
-            if item_code_item and item_name_item:
+            # 检查所有字段是否为空
+            if (item_code_item and item_name_item and 
+                item_spec_item and item_brand_item):
+                
                 item_code = item_code_item.text()
                 item_name = item_name_item.text()
+                item_spec = item_spec_item.text()
+                item_brand = item_brand_item.text()
                 
                 search_lower = search_text.lower()
-                if not search_text or search_lower in item_code.lower() or search_lower in item_name.lower():
+                
+                # 如果搜索文本为空，显示所有行
+                if not search_text:
                     self.materials_table.setRowHidden(row, False)
                 else:
-                    self.materials_table.setRowHidden(row, True)
+                    # 检查是否在任意字段中匹配
+                    if (search_lower in item_code.lower() or 
+                        search_lower in item_name.lower() or 
+                        search_lower in item_spec.lower() or 
+                        search_lower in item_brand.lower()):
+                        self.materials_table.setRowHidden(row, False)
+                    else:
+                        self.materials_table.setRowHidden(row, True)
             else:
                 # 如果表格项为空，隐藏该行
                 self.materials_table.setRowHidden(row, True)
@@ -1294,6 +1310,44 @@ class BomManagementWidget(QWidget):
         """)
         self.refresh_btn.clicked.connect(lambda: self.load_boms())
 
+        # 导入BOM按钮
+        self.import_bom_btn = QPushButton("导入BOM")
+        self.import_bom_btn.setStyleSheet("""
+            QPushButton {
+                background: #722ed1;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 90px;
+            }
+            QPushButton:hover {
+                background: #9254de;
+            }
+        """)
+        self.import_bom_btn.clicked.connect(self.show_bom_import_dialog)
+
+        # 下载模板按钮
+        self.download_template_btn = QPushButton("下载模板")
+        self.download_template_btn.setStyleSheet("""
+            QPushButton {
+                background: #13c2c2;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 90px;
+            }
+            QPushButton:hover {
+                background: #36cfc9;
+            }
+        """)
+        self.download_template_btn.clicked.connect(self.download_template)
+
         # BOM展开按钮
         self.expand_bom_btn = QPushButton("BOM展开")
         self.expand_bom_btn.setStyleSheet("""
@@ -1314,6 +1368,8 @@ class BomManagementWidget(QWidget):
         self.expand_bom_btn.clicked.connect(self.show_bom_expand_dialog)
 
         button_layout.addWidget(self.add_bom_btn)
+        button_layout.addWidget(self.import_bom_btn)
+        button_layout.addWidget(self.download_template_btn)
         button_layout.addWidget(self.refresh_btn)
         button_layout.addWidget(self.expand_bom_btn)
         button_layout.addStretch()
@@ -1422,6 +1478,48 @@ class BomManagementWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"显示BOM展开对话框失败: {str(e)}")
 
+    def show_bom_import_dialog(self):
+        """显示BOM导入对话框"""
+        try:
+            dialog = BomImportDialog(self)
+            if dialog.exec() == QDialog.Accepted:
+                # 导入成功后刷新BOM列表
+                self.load_boms()
+                QMessageBox.information(self, "成功", "BOM导入完成！")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"显示BOM导入对话框失败: {str(e)}")
+
+    def download_template(self):
+        """下载BOM导入模板"""
+        try:
+            import os
+            import shutil
+            from PySide6.QtWidgets import QFileDialog
+            
+            # 模板文件路径
+            template_path = "bom.csv"
+            
+            # 检查模板文件是否存在
+            if not os.path.exists(template_path):
+                QMessageBox.warning(self, "警告", "模板文件不存在！")
+                return
+            
+            # 选择保存位置
+            save_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "保存BOM模板",
+                "BOM导入模板.csv",
+                "CSV文件 (*.csv);;所有文件 (*)"
+            )
+            
+            if save_path:
+                # 复制模板文件到选择的位置
+                shutil.copy2(template_path, save_path)
+                QMessageBox.information(self, "成功", f"模板已保存到：\n{save_path}")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"下载模板失败: {str(e)}")
+
     def populate_bom_table(self, boms):
         """填充BOM表格"""
         self.bom_table.setRowCount(len(boms))
@@ -1480,7 +1578,7 @@ class BomManagementWidget(QWidget):
                     background: #40a9ff;
                 }
             """)
-            view_btn.clicked.connect(lambda checked, row=row: self.view_bom(row))
+            view_btn.clicked.connect(lambda checked, r=row: self.view_bom(r))
 
             edit_btn = QPushButton("编辑")
             edit_btn.setStyleSheet("""
@@ -1496,7 +1594,7 @@ class BomManagementWidget(QWidget):
                     background: #73d13d;
                 }
             """)
-            edit_btn.clicked.connect(lambda checked, row=row: self.edit_bom(row))
+            edit_btn.clicked.connect(lambda checked, r=row: self.edit_bom(r))
 
             delete_btn = QPushButton("删除")
             delete_btn.setStyleSheet("""
@@ -1512,7 +1610,7 @@ class BomManagementWidget(QWidget):
                     background: #ff7875;
                 }
             """)
-            delete_btn.clicked.connect(lambda checked, row=row: self.delete_bom(row))
+            delete_btn.clicked.connect(lambda checked, r=row: self.delete_bom(r))
 
             btn_layout = QHBoxLayout()
             btn_layout.addWidget(view_btn)
@@ -2296,5 +2394,254 @@ class BomViewDialog(QDialog):
             self.structure_table.setItem(row, 4, QTableWidgetItem(scrap_factor_display))
             # 备注
             self.structure_table.setItem(row, 5, QTableWidgetItem(str(remark) if remark else ""))
+
+
+class BomImportDialog(QDialog):
+    """BOM导入对话框"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("BOM导入")
+        self.resize(600, 500)
+        self.setMinimumSize(550, 450)
+        self.setMaximumSize(800, 600)
+        self.setModal(True)
+        self.setup_ui()
+
+    def setup_ui(self):
+        """设置UI界面"""
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # 标题
+        title_label = QLabel("BOM导入 - 从CSV文件导入BOM结构")
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #333;
+                padding: 10px;
+            }
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
+
+        # 文件选择区域
+        file_group = QGroupBox("选择文件")
+        file_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 500;
+                border: 1px solid #e8e8e8;
+                border-radius: 6px;
+                margin-top: 8px;
+                padding-top: 8px;
+                font-size: 13px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 8px;
+                padding: 0 4px 0 4px;
+                color: #262626;
+            }
+        """)
+
+        file_layout = QVBoxLayout(file_group)
+
+        # 文件路径显示
+        self.file_path_label = QLabel("未选择文件")
+        self.file_path_label.setStyleSheet("""
+            QLabel {
+                padding: 8px;
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                background-color: #fafafa;
+                color: #666;
+                font-size: 13px;
+            }
+        """)
+
+        # 选择文件按钮
+        select_file_btn = QPushButton("选择文件")
+        select_file_btn.setStyleSheet("""
+            QPushButton {
+                background: #1890ff;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background: #40a9ff;
+            }
+        """)
+        select_file_btn.clicked.connect(self.select_file)
+
+        file_layout.addWidget(self.file_path_label)
+        file_layout.addWidget(select_file_btn)
+        layout.addWidget(file_group)
+
+        # 文件格式说明
+        format_group = QGroupBox("文件格式说明和导入规则")
+        format_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 500;
+                border: 1px solid #e8e8e8;
+                border-radius: 6px;
+                margin-top: 8px;
+                padding-top: 8px;
+                font-size: 13px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 8px;
+                padding: 0 4px 0 4px;
+                color: #262626;
+            }
+        """)
+
+        format_layout = QVBoxLayout(format_group)
+        
+        format_text = QTextEdit()
+        format_text.setMaximumHeight(200)
+        format_text.setReadOnly(True)
+        format_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+        """)
+        
+        format_content = """
+文件格式要求（支持CSV和Excel格式）：
+
+Excel表格格式示例（带行列标题）：
+
+    A                           B                 C                 D                  E
+1                             型号A           型号B          型号C           型号D
+2                             规格1           规格2          规格3           规格4
+3 零部件规格1          1.0               2.0              0.0                1.5
+4 零部件规格2          0.5               1.5              2.0                0.0
+5 零部件规格3          0.0               0.0              1.0                2.0
+6 零部件规格4          1.0               1.0              1.0                1.0
+
+数据说明：
+• A列：零部件规格（第3行开始）
+• B-E列：成品品牌和规格（第1-2行）
+• 第1行：成品商品品牌
+• 第2行：成品规格型号
+• 第3行开始：零部件规格 + 用量数据
+
+导入规则说明：
+1. A1、A2单元格必须为空
+2. B1-E1填写成品品牌
+3. B2-E2填写成品规格
+4. A3-A6填写零部件规格
+5. B3-E6填写用量数据
+6. 数量为0表示不使用该零部件
+7. 系统会自动匹配成品和零部件物料
+8. 支持的文件格式：.csv, .xlsx, .xls
+        """
+        format_text.setPlainText(format_content)
+        format_layout.addWidget(format_text)
+        layout.addWidget(format_group)
+
+        # 导入进度
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        layout.addWidget(self.progress_bar)
+
+        # 按钮区域
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)
+
+        self.import_btn = QPushButton("开始导入")
+        self.import_btn.setStyleSheet("""
+            QPushButton {
+                background: #52c41a;
+                color: white;
+                border: none;
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: 500;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background: #73d13d;
+            }
+        """)
+        self.import_btn.clicked.connect(self.start_import)
+        self.import_btn.setEnabled(False)
+
+        button_layout.addWidget(cancel_btn)
+        button_layout.addWidget(self.import_btn)
+        layout.addLayout(button_layout)
+
+    def select_file(self):
+        """选择文件"""
+        from PySide6.QtWidgets import QFileDialog
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择BOM文件",
+            "",
+            "Excel文件 (*.xlsx *.xls);;CSV文件 (*.csv);;所有文件 (*)"
+        )
+        
+        if file_path:
+            self.file_path = file_path
+            self.file_path_label.setText(f"已选择: {file_path}")
+            self.import_btn.setEnabled(True)
+
+    def start_import(self):
+        """开始导入"""
+        if not hasattr(self, 'file_path'):
+            QMessageBox.warning(self, "警告", "请先选择文件！")
+            return
+
+        try:
+            # 显示进度条
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setRange(0, 0)  # 不确定进度
+            self.import_btn.setEnabled(False)
+            
+            # 导入BOM数据
+            from app.services.bom_import_service import BomImportService
+            
+            success_count, errors, warnings = BomImportService.import_bom_from_file(self.file_path)
+            
+            # 隐藏进度条
+            self.progress_bar.setVisible(False)
+            self.import_btn.setEnabled(True)
+            
+            # 显示结果
+            if success_count > 0:
+                QMessageBox.information(self, "导入成功", f"成功导入 {success_count} 个BOM关系！")
+                self.accept()
+            else:
+                error_msg = "没有成功导入任何BOM关系。\n\n"
+                if errors:
+                    error_msg += "错误信息:\n"
+                    for error in errors[:5]:  # 只显示前5个错误
+                        error_msg += f"• {error}\n"
+                    if len(errors) > 5:
+                        error_msg += f"... 还有 {len(errors) - 5} 个错误\n"
+                
+                QMessageBox.warning(self, "导入失败", error_msg)
+                
+        except Exception as e:
+            self.progress_bar.setVisible(False)
+            self.import_btn.setEnabled(True)
+            QMessageBox.critical(self, "错误", f"导入失败: {str(e)}")
 
 

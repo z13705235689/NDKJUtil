@@ -25,7 +25,7 @@ class ModernButton(QPushButton):
                     stop:0 #2c3e50, stop:1 #34495e);
                 border: none;
                 border-radius: 6px;
-                color: white;
+                color: white; 
                 font-size: 13px;
                 font-weight: 500;
                 text-align: left;
@@ -189,7 +189,7 @@ class Sidebar(QFrame):
         bottom_layout = QVBoxLayout(bottom_frame)
         bottom_layout.setContentsMargins(16, 12, 16, 12)
         
-        version_label = QLabel("Version 1.0.0")
+        version_label = QLabel("Version 2.1.0")
         version_label.setStyleSheet("""
             QLabel {
                 color: #8c8c8c;
@@ -527,7 +527,7 @@ class ContentArea(QFrame):
 
 class MainWindow(QMainWindow):
     """主窗口"""
-    
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("牛大MRP生产管理")
@@ -599,7 +599,7 @@ def main():
     
     # 设置应用程序信息
     app.setApplicationName("牛大MRP生产管理")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion("2.1.0")
     app.setOrganizationName("Niuda Technology")
     
     # 初始化数据库

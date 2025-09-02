@@ -2479,7 +2479,7 @@ class BomEditor(QWidget):
                     background: #40a9ff;
                 }
             """)
-            view_btn.clicked.connect(lambda checked, row=row: self.view_bom(row))
+            view_btn.clicked.connect(lambda checked, r=row: self.view_bom(r))
             
             delete_btn = QPushButton("删除")
             delete_btn.setStyleSheet("""
@@ -2495,7 +2495,7 @@ class BomEditor(QWidget):
                     background: #ff7875;
                 }
             """)
-            delete_btn.clicked.connect(lambda checked, row=row: self.delete_bom(row))
+            delete_btn.clicked.connect(lambda checked, r=row: self.delete_bom(r))
             
             btn_layout = QHBoxLayout()
             btn_layout.addWidget(view_btn)

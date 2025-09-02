@@ -236,7 +236,8 @@ class DatabaseManager:
     @contextmanager
     def get_conn(self):
         """获取数据库连接的上下文管理器"""
-        conn = sqlite3.connect(self.db_path)
+        db_path_str = str(self.db_path)
+        conn = sqlite3.connect(db_path_str)
         conn.row_factory = sqlite3.Row  # 使查询结果支持列名访问
         
         try:
@@ -263,11 +264,6 @@ class DatabaseManager:
                 return cursor.lastrowid
             else:
                 return cursor.rowcount
-    
-    def get_last_rowid(self) -> int:
-        """获取最后插入行的ID"""
-        # 这个方法现在不需要了，因为execute_update已经返回了正确的ID
-        return 0
     
     def execute_many(self, sql: str, params_list: list) -> int:
         """批量执行语句"""

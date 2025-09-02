@@ -33,7 +33,7 @@ class InventoryService:
             sql = f"""
                 SELECT 
                     i.ItemId,
-                    i.ItemCode, i.CnName, i.ItemType, i.Unit, i.SafetyStock,
+                    i.ItemCode, i.CnName, i.ItemSpec, i.ItemType, i.Unit, i.SafetyStock,
                     ? as Warehouse,
                     COALESCE(ib.Location, '') as Location,
                     COALESCE(ib.QtyOnHand, 0) as QtyOnHand,
@@ -53,7 +53,7 @@ class InventoryService:
             # 如果没有指定仓库，只显示有库存余额的记录
             where.append("ib.ItemId = i.ItemId")
             sql = f"""
-                SELECT ib.*, i.ItemCode, i.CnName, i.ItemType, i.Unit, i.SafetyStock
+                SELECT ib.*, i.ItemCode, i.CnName, i.ItemSpec, i.ItemType, i.Unit, i.SafetyStock
                 FROM InventoryBalance ib
                 JOIN Items i ON ib.ItemId = i.ItemId
                 WHERE {' AND '.join(where)}

@@ -13,12 +13,12 @@ class BomImportService:
     """BOM导入服务"""
     
     @staticmethod
-    def parse_bom_csv(file_path: str) -> Tuple[List[Dict], List[str]]:
+    def parse_bom_file(file_path: str) -> Tuple[List[Dict], List[str]]:
         """
-        解析BOM CSV文件
+        解析BOM文件（支持CSV和Excel格式）
         
         Args:
-            file_path: CSV文件路径
+            file_path: 文件路径（支持.csv和.xlsx格式）
             
         Returns:
             Tuple[List[Dict], List[str]]: (BOM数据列表, 错误信息列表)
@@ -26,18 +26,23 @@ class BomImportService:
         try:
             print(f"开始解析BOM文件: {file_path}")
             
-            # 读取CSV文件
-            df = pd.read_csv(file_path, header=None)
-            print(f"CSV文件形状: {df.shape}")
-            print(f"CSV文件内容预览:")
+            # 根据文件扩展名选择读取方式
+            if file_path.lower().endswith('.csv'):
+                df = pd.read_csv(file_path, header=None)
+            elif file_path.lower().endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(file_path, header=None)
+            else:
+                return [], ["不支持的文件格式，请使用CSV或Excel文件"]
+            print(f"文件形状: {df.shape}")
+            print(f"文件内容预览:")
             print(df.head())
             
             if df.empty:
-                return [], ["CSV文件为空"]
+                return [], ["文件为空"]
             
             # 验证文件格式
             if df.shape[0] < 3:
-                return [], ["CSV文件格式错误：至少需要3行数据"]
+                return [], ["文件格式错误：至少需要3行数据"]
             
             # 第一行：成品商品品牌（从第2列开始）
             product_brands = df.iloc[0, 1:].tolist()
@@ -209,12 +214,12 @@ class BomImportService:
             return None, [f"查找零部件物料失败 {spec}: {str(e)}"]
     
     @staticmethod
-    def import_bom_from_csv(file_path: str) -> Tuple[int, List[str], List[str]]:
+    def import_bom_from_file(file_path: str) -> Tuple[int, List[str], List[str]]:
         """
-        从CSV文件导入BOM数据
+        从文件导入BOM数据（支持CSV和Excel格式）
         
         Args:
-            file_path: CSV文件路径
+            file_path: 文件路径（支持.csv和.xlsx格式）
             
         Returns:
             Tuple[int, List[str], List[str]]: (成功数量, 错误信息列表, 警告信息列表)
@@ -222,8 +227,8 @@ class BomImportService:
         try:
             print("=== 开始导入BOM数据 ===")
             
-            # 解析CSV文件
-            bom_data_list, parse_errors = BomImportService.parse_bom_csv(file_path)
+            # 解析文件
+            bom_data_list, parse_errors = BomImportService.parse_bom_file(file_path)
             if parse_errors:
                 return 0, parse_errors, []
             
@@ -270,7 +275,7 @@ class BomImportService:
                                 continue
                             
                             # 创建BOM主表
-                            bom_name = f"{brand}_BOM"
+                            bom_name = f"{brand}"
                             rev = "A"
                             effective_date = datetime.now().strftime("%Y-%m-%d")
                             
@@ -350,7 +355,7 @@ class BomImportService:
 if __name__ == "__main__":
     # 测试导入
     file_path = "bom.csv"
-    success_count, errors, warnings = BomImportService.import_bom_from_csv(file_path)
+    success_count, errors, warnings = BomImportService.import_bom_from_file(file_path)
     
     print(f"\n导入结果:")
     print(f"成功: {success_count}")

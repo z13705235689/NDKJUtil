@@ -71,7 +71,7 @@ class WarehouseService:
     @staticmethod
     def list_items(warehouse_id: int) -> List[Dict]:
         sql = """
-        SELECT wi.*, i.ItemCode, i.CnName, i.Unit, i.ItemType
+        SELECT wi.*, i.ItemCode, i.CnName, i.ItemSpec, i.Unit, i.ItemType
         FROM WarehouseItems wi
         JOIN Items i ON i.ItemId = wi.ItemId
         WHERE wi.WarehouseId=?
@@ -83,7 +83,7 @@ class WarehouseService:
     def list_items_by_warehouse_name(warehouse_name: str) -> List[Dict]:
         """根据仓库名称获取该仓库下的所有物料"""
         sql = """
-        SELECT wi.*, i.ItemCode, i.CnName, i.Unit, i.ItemType, i.SafetyStock
+        SELECT wi.*, i.ItemCode, i.CnName, i.ItemSpec, i.Unit, i.ItemType, i.SafetyStock
         FROM WarehouseItems wi
         JOIN Items i ON i.ItemId = wi.ItemId
         JOIN Warehouses w ON wi.WarehouseId = w.WarehouseId
@@ -131,3 +131,23 @@ class WarehouseService:
             except:
                 pass
         return added_count
+
+    @staticmethod
+    def add_item_by_warehouse_name(warehouse_name: str, item_id: int) -> bool:
+        """根据仓库名称添加物料到仓库"""
+        try:
+            # 先获取仓库ID
+            warehouse = query_one("SELECT WarehouseId FROM Warehouses WHERE Code=? AND IsActive=1", (warehouse_name,))
+            if not warehouse:
+                raise ValueError(f"仓库 '{warehouse_name}' 不存在或已停用")
+            
+            warehouse_id = warehouse["WarehouseId"]
+            
+            # 添加物料到仓库
+            execute("""INSERT OR IGNORE INTO WarehouseItems(WarehouseId,ItemId,MinQty,MaxQty,ReorderPoint)
+                       VALUES(?,?,0,0,0)""", (warehouse_id, item_id))
+            
+            return True
+        except Exception as e:
+            print(f"添加物料到仓库失败：{e}")
+            return False

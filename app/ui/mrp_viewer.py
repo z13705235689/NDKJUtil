@@ -43,16 +43,16 @@ class MRPCalcThread(QThread):
                 )
             else:
                 # 计算成品MRP
-                print(f"🔄 [MRPCalcThread] 调用 calculate_parent_mrp_kanban")
+                print(f"[MRPCalcThread] 调用 calculate_parent_mrp_kanban")
                 data = MRPService.calculate_parent_mrp_kanban(
                     self.start_date, self.end_date, 
                     self.import_id, self.search_filter
                 )
             
-            print(f"✅ [MRPCalcThread] 计算完成，返回数据：weeks={len(data.get('weeks', []))}, rows={len(data.get('rows', []))}")
+            print(f"[MRPCalcThread] 计算完成，返回数据：weeks={len(data.get('weeks', []))}, rows={len(data.get('rows', []))}")
             self.finished.emit(data)
         except Exception as e:
-            print(f"❌ [MRPCalcThread] 计算失败：{str(e)}")
+            print(f"[MRPCalcThread] 计算失败：{str(e)}")
             self.failed.emit(str(e))
 
 class MRPViewer(QWidget):
@@ -116,7 +116,34 @@ class MRPViewer(QWidget):
         order_layout.addWidget(QLabel("客户订单版本:"))
         self.order_version_combo = QComboBox()
         self.order_version_combo.addItem("全部订单汇总", None)
-        self.order_version_combo.setMinimumWidth(300)
+        self.order_version_combo.setMinimumWidth(250)
+        self.order_version_combo.setMinimumHeight(12)   # 设置最小高度
+        self.order_version_combo.setStyleSheet("""
+            QComboBox {
+                padding: 6px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                background: white;
+                min-width: 250px;
+                max-width: 300px;
+                min-height: 12px;
+                max-height: 12px;
+            }
+            QComboBox:focus {
+                border-color: #007bff;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #6c757d;
+                margin-right: 5px;
+            }
+        """)
         order_layout.addWidget(self.order_version_combo)
         
         order_layout.addWidget(QLabel("搜索:"))

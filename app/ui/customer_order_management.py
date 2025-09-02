@@ -189,6 +189,34 @@ class CustomerOrderManagement(QWidget):
         self.version_combo = QComboBox()
         self.version_combo.addItem("全部版本汇总")
         self.version_combo.currentTextChanged.connect(self.on_version_changed)
+        self.version_combo.setMinimumWidth(200)  # 设置最小宽度
+        self.version_combo.setMinimumHeight(12)   # 设置最小高度
+        self.version_combo.setStyleSheet("""
+            QComboBox {
+                padding: 6px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                background: white;
+                min-width: 200px;
+                max-width: 300px;
+                min-height: 12px;
+                max-height: 12px;
+            }
+            QComboBox:focus {
+                border-color: #007bff;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #6c757d;
+                margin-right: 5px;
+            }
+        """)
         version_layout.addWidget(self.version_combo)
 
         date_layout = QHBoxLayout()

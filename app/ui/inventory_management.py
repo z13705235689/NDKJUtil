@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QGroupBox, QLineEdit, QComboBox, QMessageBox,
     QTabWidget, QHeaderView, QAbstractItemView, QFileDialog, QDialog,
     QFormLayout, QDialogButtonBox, QTextEdit, QSpinBox, QSizePolicy,
-    QProgressBar, QScrollArea
+    QProgressBar, QScrollArea, QInputDialog
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor
@@ -226,13 +226,14 @@ class InventoryManagement(QWidget):
         layout.addWidget(filt)
 
         self.tbl_balance = QTableWidget(0, 9)
-        self.tbl_balance.setHorizontalHeaderLabels(["物料编码","物料名称","类型","单位","仓库","库位","在手数量","安全库存","操作"])
+        self.tbl_balance.setHorizontalHeaderLabels(["物料编码","物料名称","物料规格","类型","单位","库位","在手数量","安全库存","操作"])
         self.tbl_balance.setAlternatingRowColors(True)
         self.tbl_balance.setSelectionBehavior(QAbstractItemView.SelectRows)
         header = self.tbl_balance.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
-        for c in [2,3,4,5,6,7,8]:
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 物料规格
+        for c in [3,4,5,6,7,8]:
             header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
         
         # 设置表格的大小策略，确保有足够的显示空间
@@ -255,15 +256,24 @@ class InventoryManagement(QWidget):
         cur_wh = self.cb_wh.currentText()
         cur_item_type = self.cb_item_type.currentText()
         
-        # 只在第一次加载时初始化下拉框
-        if self.cb_wh.count() == 0:
-            self.cb_wh.blockSignals(True)
-            whs = InventoryService.get_warehouses() or ["默认仓库"]
-            self.cb_wh.addItem("全部"); [self.cb_wh.addItem(w) for w in whs]
-            self.cb_wh.blockSignals(False)
-            # 默认选择"全部"
+        # 每次加载时都刷新仓库下拉框，确保新增的仓库能显示出来
+        self.cb_wh.blockSignals(True)
+        self.cb_wh.clear()
+        warehouses = WarehouseService.list_warehouses(active_only=True)
+        whs = [w["Code"] for w in warehouses] if warehouses else ["默认仓库"]
+        self.cb_wh.addItem("全部")
+        for w in whs:
+            self.cb_wh.addItem(w)
+        self.cb_wh.blockSignals(False)
+        
+        # 如果之前选择的仓库仍然存在，则保持选择；否则默认选择"全部"
+        self.cb_wh.blockSignals(True)
+        if cur_wh and cur_wh in whs:
+            self.cb_wh.setCurrentText(cur_wh)
+        else:
             self.cb_wh.setCurrentText("全部")
             cur_wh = "全部"
+        self.cb_wh.blockSignals(False)
         
         if self.cb_item_type.count() == 0:
             self.cb_item_type.blockSignals(True)
@@ -304,6 +314,7 @@ class InventoryManagement(QWidget):
                                 "ItemId": item["ItemId"],
                                 "ItemCode": item["ItemCode"],
                                 "CnName": item.get("CnName", ""),
+                                "ItemSpec": item.get("ItemSpec", ""),
                                 "ItemType": item.get("ItemType", ""),
                                 "Unit": item.get("Unit", ""),
                                 "Warehouse": "",
@@ -333,6 +344,7 @@ class InventoryManagement(QWidget):
                             "ItemId": item["ItemId"],
                             "ItemCode": item["ItemCode"],
                             "CnName": item.get("CnName", ""),
+                            "ItemSpec": item.get("ItemSpec", ""),
                             "ItemType": item.get("ItemType", ""),
                             "Unit": item.get("Unit", ""),
                             "Warehouse": "",
@@ -342,7 +354,11 @@ class InventoryManagement(QWidget):
                         })
         else:
             # 指定仓库：显示该仓库下的所有物料
-            rows = InventoryService.get_inventory_balance(warehouse=cur_wh)
+            try:
+                rows = InventoryService.get_inventory_balance(warehouse=cur_wh)
+            except Exception as e:
+                print(f"获取仓库 {cur_wh} 的库存余额时出错: {e}")
+                rows = []  # 如果出错，显示空列表
             
             # 物料类型筛选
             if cur_item_type != "全部":
@@ -396,9 +412,9 @@ class InventoryManagement(QWidget):
             # 先创建所有表格项
             self.tbl_balance.setItem(r, 0, QTableWidgetItem(it["ItemCode"]))
             self.tbl_balance.setItem(r, 1, QTableWidgetItem(it["CnName"]))
-            self.tbl_balance.setItem(r, 2, QTableWidgetItem(it["ItemType"]))
-            self.tbl_balance.setItem(r, 3, QTableWidgetItem(it.get("Unit","") or ""))
-            self.tbl_balance.setItem(r, 4, QTableWidgetItem(it.get("Warehouse","") or ""))
+            self.tbl_balance.setItem(r, 2, QTableWidgetItem(it.get("ItemSpec", "") or ""))
+            self.tbl_balance.setItem(r, 3, QTableWidgetItem(it["ItemType"]))
+            self.tbl_balance.setItem(r, 4, QTableWidgetItem(it.get("Unit","") or ""))
             self.tbl_balance.setItem(r, 5, QTableWidgetItem(it.get("Location","") or ""))
             qty = int(it.get("QtyOnHand") or 0)
             cell_qty = QTableWidgetItem(str(qty))
@@ -451,7 +467,7 @@ class InventoryManagement(QWidget):
         search_row1 = QHBoxLayout()
         search_row1.addWidget(QLabel("物料搜索："))
         self.ed_daily_search = QLineEdit()
-        self.ed_daily_search.setPlaceholderText("输入物料编码或名称进行搜索")
+        self.ed_daily_search.setPlaceholderText("输入物料编码、名称或规格进行搜索")
         self.ed_daily_search.setMinimumWidth(300)
         self.ed_daily_search.textChanged.connect(self.daily_apply_filters)  # 实时搜索
         search_row1.addWidget(self.ed_daily_search)
@@ -485,12 +501,12 @@ class InventoryManagement(QWidget):
         
         layout.addWidget(search_group)
 
-        self.tbl_daily = QTableWidget(0, 7)
-        self.tbl_daily.setHorizontalHeaderLabels(["物料编码","物料名称","在手","单位","库位","安全库存","操作"])
+        self.tbl_daily = QTableWidget(0, 8)  # 默认8列，动态调整
+        self.tbl_daily.setHorizontalHeaderLabels(["物料编码","物料名称","物料规格","在手","单位","库位","安全库存","操作"])
         header = self.tbl_daily.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
-        for c in [2,3,4,5,6]:
+        for c in [2,3,4,5,6,7]:
             header.setSectionResizeMode(c, QHeaderView.ResizeToContents)
         
         # 设置表格的大小策略，确保有足够的显示空间
@@ -510,58 +526,116 @@ class InventoryManagement(QWidget):
 
     def daily_load_list(self):
         # 获取当前选择的仓库
-        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        wh = self.cb_daily_wh.currentText()
         
         # 每次加载时都刷新仓库下拉框，确保删除的仓库不会显示
         self.cb_daily_wh.clear()
-        warehouses = InventoryService.get_warehouses() or ["默认仓库"]
+        warehouses = InventoryService.get_warehouses() or []
+        
+        # 添加"全部"选项
+        self.cb_daily_wh.addItem("全部")
         for w in warehouses:
             self.cb_daily_wh.addItem(w)
         
-        # 如果之前选择的仓库仍然存在，则保持选择；否则选择第一个
-        if wh in warehouses:
+        # 如果之前选择的仓库仍然存在，则保持选择；否则默认选择"全部"
+        if wh and wh in warehouses:
             self.cb_daily_wh.setCurrentText(wh)
-        elif warehouses:
-            self.cb_daily_wh.setCurrentText(warehouses[0])
-            wh = warehouses[0]
+        else:
+            self.cb_daily_wh.setCurrentText("全部")
+            wh = "全部"
         
-        # 获取该仓库中确实存在的物料列表
-        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
+        # 根据选择的仓库获取物料列表
+        if wh == "全部":
+            # 全部仓库：显示所有物料
+            warehouse_items = ItemService.get_all_items()
+        else:
+            # 特定仓库：获取该仓库中确实存在的物料列表
+            warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
         
         # 为每个物料获取库存信息
         display_rows = []
         for item in warehouse_items:
-            # 获取库存余额信息
-            balance_info = InventoryService.get_inventory_balance(item_id=item["ItemId"], warehouse=wh)
-            
-            if balance_info:
-                # 有库存余额记录
-                for balance in balance_info:
-                    display_rows.append({
-                        "ItemId": item["ItemId"],
-                        "ItemCode": item["ItemCode"],
-                        "CnName": item.get("CnName", ""),
-                        "ItemType": item.get("ItemType", ""),
-                        "Unit": item.get("Unit", ""),
-                        "Warehouse": wh,
-                        "Location": balance.get("Location", ""),
-                        "QtyOnHand": balance.get("QtyOnHand", 0),
-                        "SafetyStock": item.get("SafetyStock", 0)
-                    })
-            else:
-                # 没有库存余额记录，从库存服务获取真实数量
-                real_qty = InventoryService.get_onhand(item["ItemId"], wh, None)
+            if wh == "全部":
+                # 全部仓库：汇总所有仓库的库存信息
+                all_warehouses = InventoryService.get_warehouses() or []
+                total_qty = 0
+                has_stock_in_any_warehouse = False
+                
+                # 计算所有仓库的总库存
+                for warehouse in all_warehouses:
+                    balance_info = InventoryService.get_inventory_balance(item_id=item["ItemId"], warehouse=warehouse)
+                    if balance_info:
+                        has_stock_in_any_warehouse = True
+                        for balance in balance_info:
+                            total_qty += balance.get("QtyOnHand", 0)
+                    else:
+                        real_qty = InventoryService.get_onhand(item["ItemId"], warehouse, None)
+                        if real_qty > 0:
+                            has_stock_in_any_warehouse = True
+                        total_qty += real_qty
+                
+                # 显示汇总后的记录
                 display_rows.append({
                     "ItemId": item["ItemId"],
                     "ItemCode": item["ItemCode"],
                     "CnName": item.get("CnName", ""),
+                    "ItemSpec": item.get("ItemSpec", ""),
                     "ItemType": item.get("ItemType", ""),
                     "Unit": item.get("Unit", ""),
-                    "Warehouse": wh,
+                    "Warehouse": "全部",  # 标记为全部仓库
                     "Location": "",
-                    "QtyOnHand": real_qty,
+                    "QtyOnHand": total_qty,
                     "SafetyStock": item.get("SafetyStock", 0)
                 })
+                
+                # 如果物料在所有仓库中都没有库存，也要显示一条记录
+                if not has_stock_in_any_warehouse and not all_warehouses:
+                    display_rows.append({
+                        "ItemId": item["ItemId"],
+                        "ItemCode": item["ItemCode"],
+                        "CnName": item.get("CnName", ""),
+                        "ItemSpec": item.get("ItemSpec", ""),
+                        "ItemType": item.get("ItemType", ""),
+                        "Unit": item.get("Unit", ""),
+                        "Warehouse": "",
+                        "Location": "",
+                        "QtyOnHand": 0,
+                        "SafetyStock": item.get("SafetyStock", 0)
+                    })
+            else:
+                # 特定仓库：获取该仓库的库存信息
+                balance_info = InventoryService.get_inventory_balance(item_id=item["ItemId"], warehouse=wh)
+                
+                if balance_info:
+                    # 有库存余额记录
+                    for balance in balance_info:
+                        display_rows.append({
+                            "ItemId": item["ItemId"],
+                            "ItemCode": item["ItemCode"],
+                            "CnName": item.get("CnName", ""),
+                            "ItemSpec": item.get("ItemSpec", ""),
+                            "ItemType": item.get("ItemType", ""),
+                            "Unit": item.get("Unit", ""),
+                            "Warehouse": wh,
+                            "Location": balance.get("Location", ""),
+                            "QtyOnHand": balance.get("QtyOnHand", 0),
+                            "SafetyStock": item.get("SafetyStock", 0)
+                        })
+                else:
+                    # 没有库存余额记录，从库存服务获取真实数量
+                    real_qty = InventoryService.get_onhand(item["ItemId"], wh, None)
+                    display_rows.append({
+                        "ItemId": item["ItemId"],
+                        "ItemCode": item["ItemCode"],
+                        "CnName": item.get("CnName", ""),
+                        "ItemSpec": item.get("ItemSpec", ""),
+                        "ItemType": item.get("ItemType", ""),
+                        "Unit": item.get("Unit", ""),
+                        "Warehouse": wh,
+                        "Location": "",
+                        "QtyOnHand": real_qty,
+                        "SafetyStock": item.get("SafetyStock", 0)
+                    })
         
         # 保存原始数据用于筛选
         self._original_daily_data = display_rows.copy()
@@ -570,7 +644,36 @@ class InventoryManagement(QWidget):
         self._render_daily_table(display_rows)
 
     def row_in(self, rec):
-        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        # 如果选择"全部"仓库，需要用户选择具体仓库
+        if self.cb_daily_wh.currentText() == "全部":
+            warehouses = InventoryService.get_warehouses() or []
+            if not warehouses:
+                QMessageBox.warning(self, "无可用仓库", "系统中没有可用的仓库，请先创建仓库。")
+                return
+            
+            # 让用户选择仓库
+            warehouse, ok = QInputDialog.getItem(
+                self, "选择仓库", "请选择要入库的仓库：", warehouses, 0, False
+            )
+            if not ok:
+                return
+            wh = warehouse
+        else:
+            wh = self.cb_daily_wh.currentText()
+        
+        # 检查物料是否已关联到仓库，如果没有则自动关联
+        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
+        item_exists_in_warehouse = any(item["ItemId"] == rec["ItemId"] for item in warehouse_items)
+        
+        if not item_exists_in_warehouse:
+            # 自动关联物料到仓库
+            success = WarehouseService.add_item_by_warehouse_name(wh, rec["ItemId"])
+            if success:
+                print(f"已自动将物料 {rec['ItemCode']} 关联到仓库 {wh}")
+            else:
+                QMessageBox.warning(self, "关联失败", f"无法将物料 {rec['ItemCode']} 关联到仓库 {wh}，请检查仓库是否存在。")
+                return
+        
         d = QtyPriceDialog(self, title=f"入库：{rec['ItemCode']}")
         if d.exec()!=QDialog.Accepted: return
         qty, price, loc, rm, _ = d.get_values()  # 忽略安全库存
@@ -580,7 +683,36 @@ class InventoryManagement(QWidget):
         self.daily_load_list()
 
     def row_out(self, rec):
-        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        # 如果选择"全部"仓库，需要用户选择具体仓库
+        if self.cb_daily_wh.currentText() == "全部":
+            warehouses = InventoryService.get_warehouses() or []
+            if not warehouses:
+                QMessageBox.warning(self, "无可用仓库", "系统中没有可用的仓库，请先创建仓库。")
+                return
+            
+            # 让用户选择仓库
+            warehouse, ok = QInputDialog.getItem(
+                self, "选择仓库", "请选择要出库的仓库：", warehouses, 0, False
+            )
+            if not ok:
+                return
+            wh = warehouse
+        else:
+            wh = self.cb_daily_wh.currentText()
+        
+        # 检查物料是否已关联到仓库，如果没有则自动关联
+        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
+        item_exists_in_warehouse = any(item["ItemId"] == rec["ItemId"] for item in warehouse_items)
+        
+        if not item_exists_in_warehouse:
+            # 自动关联物料到仓库
+            success = WarehouseService.add_item_by_warehouse_name(wh, rec["ItemId"])
+            if success:
+                print(f"已自动将物料 {rec['ItemCode']} 关联到仓库 {wh}")
+            else:
+                QMessageBox.warning(self, "关联失败", f"无法将物料 {rec['ItemCode']} 关联到仓库 {wh}，请检查仓库是否存在。")
+                return
+        
         # 检查当前库存
         current_stock = InventoryService.get_onhand(rec["ItemId"], wh, rec.get("Location"))
         
@@ -603,7 +735,36 @@ class InventoryManagement(QWidget):
         self.daily_load_list()
 
     def row_edit(self, rec):
-        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        # 如果选择"全部"仓库，需要用户选择具体仓库
+        if self.cb_daily_wh.currentText() == "全部":
+            warehouses = InventoryService.get_warehouses() or []
+            if not warehouses:
+                QMessageBox.warning(self, "无可用仓库", "系统中没有可用的仓库，请先创建仓库。")
+                return
+            
+            # 让用户选择仓库
+            warehouse, ok = QInputDialog.getItem(
+                self, "选择仓库", "请选择要编辑的仓库：", warehouses, 0, False
+            )
+            if not ok:
+                return
+            wh = warehouse
+        else:
+            wh = self.cb_daily_wh.currentText()
+        
+        # 检查物料是否已关联到仓库，如果没有则自动关联
+        warehouse_items = WarehouseService.list_items_by_warehouse_name(wh)
+        item_exists_in_warehouse = any(item["ItemId"] == rec["ItemId"] for item in warehouse_items)
+        
+        if not item_exists_in_warehouse:
+            # 自动关联物料到仓库
+            success = WarehouseService.add_item_by_warehouse_name(wh, rec["ItemId"])
+            if success:
+                print(f"已自动将物料 {rec['ItemCode']} 关联到仓库 {wh}")
+            else:
+                QMessageBox.warning(self, "关联失败", f"无法将物料 {rec['ItemCode']} 关联到仓库 {wh}，请检查仓库是否存在。")
+                return
+        
         onhand = InventoryService.get_onhand(rec["ItemId"], wh, rec.get("Location"))
         
         # 查询物料的详细信息，包括安全库存
@@ -632,7 +793,23 @@ class InventoryManagement(QWidget):
 
     def row_delete(self, rec):
         """删除物料从仓库"""
-        wh = self.cb_daily_wh.currentText() or "默认仓库"
+        # 如果选择"全部"仓库，需要用户选择具体仓库
+        if self.cb_daily_wh.currentText() == "全部":
+            warehouses = InventoryService.get_warehouses() or []
+            if not warehouses:
+                QMessageBox.warning(self, "无可用仓库", "系统中没有可用的仓库，请先创建仓库。")
+                return
+            
+            # 让用户选择仓库
+            warehouse, ok = QInputDialog.getItem(
+                self, "选择仓库", "请选择要删除的仓库：", warehouses, 0, False
+            )
+            if not ok:
+                return
+            wh = warehouse
+        else:
+            wh = self.cb_daily_wh.currentText()
+        
         current_stock = InventoryService.get_onhand(rec["ItemId"], wh, rec.get("Location"))
         
         # 检查物料是否真的存在于该仓库中
@@ -745,7 +922,8 @@ class InventoryManagement(QWidget):
         if search_text:
             filtered_rows = [row for row in filtered_rows if 
                            search_text in row["ItemCode"].lower() or 
-                           search_text in row["CnName"].lower()]
+                           search_text in row["CnName"].lower() or
+                           search_text in row.get("ItemSpec", "").lower()]
         
         # 应用物料类型筛选
         selected_type = self.cb_daily_item_type.currentData()
@@ -769,6 +947,33 @@ class InventoryManagement(QWidget):
 
     def _render_daily_table(self, rows):
         """渲染日常登记表格"""
+        # 检查是否选择"全部"仓库
+        is_all_warehouses = self.cb_daily_wh.currentText() == "全部"
+        
+        # 统一使用8列，不显示仓库列
+        self.tbl_daily.setColumnCount(8)
+        self.tbl_daily.setHorizontalHeaderLabels(["物料编码","物料名称","物料规格","在手","单位","库位","安全库存","操作"])
+        
+        # 完全重置表格，避免任何残留内容影响显示
+        self.tbl_daily.clearContents()
+        # 确保表格完全清空，但不清除列标题
+        for row in range(self.tbl_daily.rowCount()):
+            for col in range(self.tbl_daily.columnCount()):
+                self.tbl_daily.takeItem(row, col)
+                self.tbl_daily.removeCellWidget(row, col)
+        
+        # 重新设置列宽模式
+        header = self.tbl_daily.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 物料编码
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # 物料名称
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 物料规格
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 在手
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 单位
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 库位
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 安全库存
+        header.setSectionResizeMode(7, QHeaderView.Fixed)  # 操作列固定宽度
+        self.tbl_daily.setColumnWidth(7, 200)  # 设置操作列固定宽度
+        
         # 对数据进行排序：低于安全库存的标红最上面，然后优先展示有库存的，最后是库存为0的
         def sort_key(row):
             qty = int(row.get("QtyOnHand") or 0)
@@ -798,26 +1003,30 @@ class InventoryManagement(QWidget):
             self.tbl_daily.setItem(r, 0, item_code_cell)
             
             self.tbl_daily.setItem(r, 1, QTableWidgetItem(row_data["CnName"]))
+            self.tbl_daily.setItem(r, 2, QTableWidgetItem(row_data.get("ItemSpec", "")))
             qty = int(row_data["QtyOnHand"] or 0)
             qty_cell = QTableWidgetItem(str(qty))
-            self.tbl_daily.setItem(r, 2, qty_cell)
+            self.tbl_daily.setItem(r, 3, qty_cell)
             
-            self.tbl_daily.setItem(r, 3, QTableWidgetItem(row_data["Unit"]))
-            self.tbl_daily.setItem(r, 4, QTableWidgetItem(row_data["Location"]))
+            self.tbl_daily.setItem(r, 4, QTableWidgetItem(row_data["Unit"]))
+            
+            # 统一不显示仓库列
+            self.tbl_daily.setItem(r, 5, QTableWidgetItem(row_data["Location"]))
             ss = int(row_data["SafetyStock"] or 0)
             ss_cell = QTableWidgetItem(str(ss))
-            self.tbl_daily.setItem(r, 5, ss_cell)
+            self.tbl_daily.setItem(r, 6, ss_cell)
+            operation_col = 7
             
             # 检查是否低于安全库存
             if ss > 0 and qty < ss:
                 # 低于安全库存：整行背景标红
-                for col in range(6):  # 6列（不包括操作列）
+                for col in range(operation_col):  # 不包括操作列
                     item = self.tbl_daily.item(r, col)
                     if item:
                         item.setBackground(QColor(255, 200, 200))  # 浅红色背景
-                        if col == 2:  # 在手数量列
+                        if col == 3:  # 在手数量列
                             item.setForeground(QColor(220, 20, 60))     # 红色文字
-                        elif col == 5:  # 安全库存列
+                        elif col == 6:  # 安全库存列
                             item.setForeground(QColor(220, 20, 60))     # 红色文字
             else:
                 # 正常库存：绿色背景（仅在手数量列）
@@ -832,7 +1041,7 @@ class InventoryManagement(QWidget):
             b_edit.clicked.connect(lambda _, rec=row_data: self.row_edit(rec))
             b_delete.clicked.connect(lambda _, rec=row_data: self.row_delete(rec))
             h.addWidget(b_in); h.addWidget(b_out); h.addWidget(b_edit); h.addWidget(b_delete)
-            self.tbl_daily.setCellWidget(r, 6, w)
+            self.tbl_daily.setCellWidget(r, operation_col, w)
 
     def daily_clear_filters(self):
         """清除所有筛选条件"""
@@ -1000,6 +1209,9 @@ class InventoryManagement(QWidget):
     # ---------- 工具 ----------
     def reload_all(self):
         self.load_balance()
+        # 确保日常登记页面默认选择"全部"
+        if hasattr(self, 'cb_daily_wh'):
+            self.cb_daily_wh.setCurrentText("全部")
         self.daily_load_list()
         self.load_tx()
 
@@ -1090,7 +1302,12 @@ class InventoryImportDialog(QDialog):
 重复物资处理：
 - 自动识别重复的物料代码和规格
 - 将相同物料的数量进行累计计算
-- 导入后会显示累计计算的详细信息""")
+- 导入后会显示累计计算的详细信息
+
+自动关联功能：
+- 导入时会自动将物料关联到选择的仓库
+- 无需手动在仓库管理中建立关联关系
+- 确保物料在仓库管理中可见""")
         info_text.setReadOnly(True)
         info_layout.addWidget(info_text)
         layout.addWidget(info_group)
@@ -1188,7 +1405,9 @@ class InventoryImportDialog(QDialog):
             "确认导入", 
             f"确定要导入库存数据到仓库 '{warehouse}' 吗？\n"
             f"文件：{file_path}\n\n"
-            f"导入将更新匹配物料的库存数量。",
+            f"导入将：\n"
+            f"• 更新匹配物料的库存数量\n"
+            f"• 自动将物料关联到仓库 '{warehouse}'",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
