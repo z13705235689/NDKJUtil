@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS Items (
     Quantity REAL NOT NULL DEFAULT 1.0,     -- 组成数量
     SafetyStock REAL NOT NULL DEFAULT 0,    -- 安全库存
     Remark TEXT,                            -- 备注
+    Brand TEXT,                            -- 商品品牌
     ParentItemId INTEGER,                   -- 归属物资ID（上级物资）
     IsActive BOOLEAN NOT NULL DEFAULT 1,    -- 是否启用
     CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

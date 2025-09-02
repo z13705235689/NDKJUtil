@@ -39,17 +39,17 @@ class BomEditorDialog(QDialog):
         layout.setSpacing(20)
 
         # 标题
-        title_label = QLabel("BOM编辑器")
-        title_label.setStyleSheet("""
+        self.title_label = QLabel("BOM编辑器")
+        self.title_label.setStyleSheet("""
             QLabel {
                 font-size: 20px;
                 font-weight: bold;
                 color: #333;
-                padding: 15px;
+                padding: 8px;
             }
         """)
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.title_label)
 
         # 创建分割器
         splitter = QSplitter(Qt.Vertical)
@@ -63,8 +63,8 @@ class BomEditorDialog(QDialog):
         tree_widget = self.create_product_tree_widget()
         splitter.addWidget(tree_widget)
 
-        # 设置分割器比例
-        splitter.setSizes([180, 500])
+        # 设置分割器比例 - 调整结果区域更高
+        splitter.setSizes([150, 550])
         layout.addWidget(splitter)
 
         # 按钮区域
@@ -170,6 +170,7 @@ class BomEditorDialog(QDialog):
         self.bom_name_edit = QLineEdit()
         self.bom_name_edit.setPlaceholderText("请输入BOM名称，如：产品A的BOM结构")
         self.bom_name_edit.setMaxLength(100)
+        self.bom_name_edit.setStyleSheet("QLineEdit { padding: 4px 8px; min-height: 20px; max-height: 24px; }")
         header_layout.addWidget(QLabel("BOM名称 *:"), 0, 0)
         header_layout.addWidget(self.bom_name_edit, 0, 1)
 
@@ -177,6 +178,7 @@ class BomEditorDialog(QDialog):
         self.rev_edit = QLineEdit()
         self.rev_edit.setPlaceholderText("请输入版本号，如：A、B、1.0等")
         self.rev_edit.setMaxLength(20)
+        self.rev_edit.setStyleSheet("QLineEdit { padding: 4px 8px; min-height: 20px; max-height: 24px; }")
         header_layout.addWidget(QLabel("版本号 *:"), 1, 0)
         header_layout.addWidget(self.rev_edit, 1, 1)
 
@@ -185,6 +187,7 @@ class BomEditorDialog(QDialog):
         self.effective_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.effective_date_edit.setDate(QDate.currentDate())
         self.effective_date_edit.setCalendarPopup(True)
+        self.effective_date_edit.setStyleSheet("QDateEdit { padding: 4px 8px; min-height: 20px; max-height: 24px; }")
         header_layout.addWidget(QLabel("生效日期 *:"), 2, 0)
         header_layout.addWidget(self.effective_date_edit, 2, 1)
 
@@ -194,13 +197,15 @@ class BomEditorDialog(QDialog):
         self.expire_date_edit.setDisplayFormat("yyyy-MM-dd")
         self.expire_date_edit.setCalendarPopup(True)
         self.expire_date_edit.setDate(QDate.currentDate().addYears(10))
+        self.expire_date_edit.setStyleSheet("QDateEdit { padding: 4px 8px; min-height: 20px; max-height: 24px; }")
         header_layout.addWidget(QLabel("失效日期:"), 0, 2)
         header_layout.addWidget(self.expire_date_edit, 0, 3)
 
         # 备注
         self.remark_edit = QTextEdit()
-        self.remark_edit.setMaximumHeight(60)
+        self.remark_edit.setMaximumHeight(40)
         self.remark_edit.setPlaceholderText("请输入备注信息")
+        self.remark_edit.setStyleSheet("QTextEdit { padding: 4px 8px; min-height: 20px; max-height: 32px; }")
         header_layout.addWidget(QLabel("备注:"), 1, 2)
         header_layout.addWidget(self.remark_edit, 1, 3, 2, 1)
 
@@ -250,11 +255,12 @@ class BomEditorDialog(QDialog):
                 background: #1890ff;
                 color: white;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 5px;
-                font-size: 13px;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
                 font-weight: 500;
-                min-width: 120px;
+                min-width: 100px;
+                max-height: 28px;
             }
             QPushButton:hover {
                 background: #40a9ff;
@@ -269,11 +275,12 @@ class BomEditorDialog(QDialog):
                 background: #52c41a;
                 color: white;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 5px;
-                font-size: 13px;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
                 font-weight: 500;
-                min-width: 100px;
+                min-width: 80px;
+                max-height: 28px;
             }
             QPushButton:hover {
                 background: #73d13d;
@@ -288,11 +295,12 @@ class BomEditorDialog(QDialog):
                 background: #faad14;
                 color: white;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 5px;
-                font-size: 13px;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
                 font-weight: 500;
-                min-width: 100px;
+                min-width: 80px;
+                max-height: 28px;
             }
             QPushButton:hover {
                 background: #ffc53d;
@@ -319,8 +327,9 @@ class BomEditorDialog(QDialog):
                 font-size: 13px;
             }
             QTreeWidget::item {
-                padding: 8px 0px;
+                padding: 4px 0px;
                 border-bottom: 1px solid #f0f0f0;
+                min-height: 30px;
             }
             QTreeWidget::item:hover {
                 background-color: #f0f0f0;
@@ -331,7 +340,7 @@ class BomEditorDialog(QDialog):
             QHeaderView::section {
                 background-color: #f5f5f5;
                 color: #262626;
-                padding: 10px 8px;
+                padding: 6px 8px;
                 border: none;
                 border-bottom: 2px solid #e8e8e8;
                 font-weight: 600;
@@ -395,8 +404,41 @@ class BomEditorDialog(QDialog):
             
             self.remark_edit.setPlainText(str(self.bom_data['Remark'] if 'Remark' in self.bom_data.keys() else ''))
 
+            # 更新标题显示父产品信息
+            self.update_title_with_parent_info()
+
         except Exception as e:
             print(f"加载BOM数据失败: {e}")
+
+    def update_title_with_parent_info(self):
+        """更新标题显示父产品信息"""
+        try:
+            if not self.bom_data:
+                return
+                
+            parent_item_code = self.bom_data.get('ParentItemCode', '')
+            parent_item_name = self.bom_data.get('ParentItemName', '')
+            parent_item_spec = self.bom_data.get('ParentItemSpec', '')
+            parent_item_brand = self.bom_data.get('ParentItemBrand', '')
+            
+            # 构建标题信息
+            title_parts = ["BOM编辑器"]
+            if parent_item_code or parent_item_name:
+                product_info_parts = []
+                if parent_item_code:
+                    product_info_parts.append(parent_item_code)
+                if parent_item_name:
+                    product_info_parts.append(parent_item_name)
+                if parent_item_spec:
+                    product_info_parts.append(f"规格: {parent_item_spec}")
+                
+                title_parts.append(f"({' - '.join(product_info_parts)})")
+            
+            title_text = " - ".join(title_parts)
+            self.title_label.setText(title_text)
+            
+        except Exception as e:
+            print(f"更新标题失败: {e}")
 
     def load_bom_lines(self):
         """加载BOM明细列表到树形视图"""
@@ -417,6 +459,8 @@ class BomEditorDialog(QDialog):
             # 修复SQLite Row对象的访问方式
             child_item_code = line['ChildItemCode'] if 'ChildItemCode' in line.keys() else ''
             child_item_name = line['ChildItemName'] if 'ChildItemName' in line.keys() else ''
+            child_item_spec = line['ChildItemSpec'] if 'ChildItemSpec' in line.keys() else ''
+            child_item_brand = line['ChildItemBrand'] if 'ChildItemBrand' in line.keys() else ''
             qty_per = line['QtyPer'] if 'QtyPer' in line.keys() else 0
             scrap_factor = line['ScrapFactor'] if 'ScrapFactor' in line.keys() else 0
             remark = line['Remark'] if 'Remark' in line.keys() else ''
@@ -424,8 +468,12 @@ class BomEditorDialog(QDialog):
             # 创建产品节点
             product_item = QTreeWidgetItem(self.product_tree)
             
-            # 产品信息列
-            product_info = f"{child_item_code} - {child_item_name}"
+            # 产品信息列 - 包含编码、名称、规格
+            product_info_parts = [child_item_code, child_item_name]
+            if child_item_spec:
+                product_info_parts.append(f"规格: {child_item_spec}")
+            
+            product_info = " - ".join(product_info_parts)
             product_item.setText(0, product_info)
             
             # 用量列
@@ -449,17 +497,18 @@ class BomEditorDialog(QDialog):
         operation_layout.setSpacing(2)
 
         # 添加子物料按钮
-        add_child_btn = QPushButton("+")
+        add_child_btn = QPushButton("+ 新增")
         add_child_btn.setStyleSheet("""
             QPushButton {
                 background: #52c41a;
                 color: white;
                 border: none;
-                padding: 3px 6px;
-                border-radius: 3px;
+                padding: 5px 8px;
+                border-radius: 4px;
                 font-size: 12px;
                 font-weight: bold;
-                min-width: 22px;
+                min-width: 20px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: #73d13d;
@@ -474,10 +523,11 @@ class BomEditorDialog(QDialog):
                 background: #1890ff;
                 color: white;
                 border: none;
-                padding: 3px 6px;
-                border-radius: 3px;
+                padding: 5px 8px;
+                border-radius: 4px;
                 font-size: 11px;
-                min-width: 30px;
+                min-width: 20px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: #40a9ff;
@@ -492,10 +542,11 @@ class BomEditorDialog(QDialog):
                 background: #ff4d4f;
                 color: white;
                 border: none;
-                padding: 3px 6px;
-                border-radius: 3px;
+                padding: 5px 8px;
+                border-radius: 4px;
                 font-size: 11px;
-                min-width: 30px;
+                min-width: 20px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: #ff7875;
@@ -513,16 +564,16 @@ class BomEditorDialog(QDialog):
         """添加子物料到根节点"""
         self.add_material_dialog = MaterialSelectionDialog(self)
         if self.add_material_dialog.exec() == QDialog.Accepted:
-            material_data = self.add_material_dialog.get_selected_material()
-            if material_data:
+            materials_data = self.add_material_dialog.get_selected_materials()
+            for material_data in materials_data:
                 self.add_material_to_tree(None, material_data)
 
     def add_child_to_node(self, parent_item, parent_line_data):
         """在指定节点下添加子物料"""
         self.add_material_dialog = MaterialSelectionDialog(self)
         if self.add_material_dialog.exec() == QDialog.Accepted:
-            material_data = self.add_material_dialog.get_selected_material()
-            if material_data:
+            materials_data = self.add_material_dialog.get_selected_materials()
+            for material_data in materials_data:
                 self.add_material_to_tree(parent_item, material_data)
 
     def add_material_to_tree(self, parent_item, material_data):
@@ -545,6 +596,8 @@ class BomEditorDialog(QDialog):
             'ItemId': material_data['ItemId'] if 'ItemId' in material_data.keys() else 0,
             'ItemCode': material_data['ItemCode'] if 'ItemCode' in material_data.keys() else '',
             'ItemName': material_data['CnName'] if 'CnName' in material_data.keys() else '',
+            'ItemSpec': material_data['ItemSpec'] if 'ItemSpec' in material_data.keys() else '',
+            'Brand': material_data['Brand'] if 'Brand' in material_data.keys() else '',
             'ItemType': material_data['ItemType'] if 'ItemType' in material_data.keys() else ''
         })
 
@@ -839,10 +892,10 @@ class MaterialSelectionDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.selected_material = None
+        self.selected_materials = []  # 改为支持多选
         self.setWindowTitle("选择物料")
-        self.resize(650, 500)
-        self.setMinimumSize(600, 450)
+        self.resize(750, 500)
+        self.setMinimumSize(700, 450)
         self.setModal(True)
         self.setup_ui()
         self.load_materials()
@@ -874,9 +927,9 @@ class MaterialSelectionDialog(QDialog):
 
         # 物料列表表格
         self.materials_table = QTableWidget()
-        self.materials_table.setColumnCount(4)
+        self.materials_table.setColumnCount(6)
         self.materials_table.setHorizontalHeaderLabels([
-            "物料编码", "物料名称", "物料类型", "规格型号"
+            "选择", "物料编码", "物料名称", "规格型号", "商品品牌", "物料类型"
         ])
 
         # 设置表格样式
@@ -910,15 +963,57 @@ class MaterialSelectionDialog(QDialog):
 
         # 调整列宽
         header = self.materials_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 物料编码
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # 物料名称
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 物料类型
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 选择
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # 物料编码
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # 物料名称
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 规格型号
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 商品品牌
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 物料类型
 
         layout.addWidget(self.materials_table)
 
         # 按钮区域
         button_layout = QHBoxLayout()
+        
+        # 多选操作按钮
+        select_all_btn = QPushButton("全选")
+        select_all_btn.setStyleSheet("""
+            QPushButton {
+                background: #52c41a;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 500;
+                min-width: 60px;
+            }
+            QPushButton:hover {
+                background: #73d13d;
+            }
+        """)
+        select_all_btn.clicked.connect(self.select_all_materials)
+        
+        clear_all_btn = QPushButton("清空")
+        clear_all_btn.setStyleSheet("""
+            QPushButton {
+                background: #faad14;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 500;
+                min-width: 60px;
+            }
+            QPushButton:hover {
+                background: #ffc53d;
+            }
+        """)
+        clear_all_btn.clicked.connect(self.clear_all_selections)
+        
+        button_layout.addWidget(select_all_btn)
+        button_layout.addWidget(clear_all_btn)
         button_layout.addStretch()
 
         cancel_btn = QPushButton("取消")
@@ -960,23 +1055,30 @@ class MaterialSelectionDialog(QDialog):
         self.materials_table.setRowCount(len(materials))
 
         for row, material in enumerate(materials):
+            # 添加复选框
+            checkbox = QCheckBox()
+            checkbox.stateChanged.connect(lambda state, row=row: self.on_checkbox_changed(state, row))
+            self.materials_table.setCellWidget(row, 0, checkbox)
+            
             # 修复SQLite Row对象的访问方式
             item_code = material['ItemCode'] if 'ItemCode' in material.keys() else ''
             item_name = material['CnName'] if 'CnName' in material.keys() else ''
+            item_spec = material['ItemSpec'] if 'ItemSpec' in material.keys() else ''
+            item_brand = material['Brand'] if 'Brand' in material.keys() else ''
             item_type = material['ItemType'] if 'ItemType' in material.keys() else ''
-            specification = material['Specification'] if 'Specification' in material.keys() else ''
             
-            self.materials_table.setItem(row, 0, QTableWidgetItem(str(item_code)))
-            self.materials_table.setItem(row, 1, QTableWidgetItem(str(item_name)))
-            self.materials_table.setItem(row, 2, QTableWidgetItem(str(item_type)))
-            self.materials_table.setItem(row, 3, QTableWidgetItem(str(specification)))
+            self.materials_table.setItem(row, 1, QTableWidgetItem(str(item_code)))
+            self.materials_table.setItem(row, 2, QTableWidgetItem(str(item_name)))
+            self.materials_table.setItem(row, 3, QTableWidgetItem(str(item_spec)))
+            self.materials_table.setItem(row, 4, QTableWidgetItem(str(item_brand)))
+            self.materials_table.setItem(row, 5, QTableWidgetItem(str(item_type)))
 
     def filter_materials(self, search_text):
         """过滤物料"""
         for row in range(self.materials_table.rowCount()):
             # 修复表格项为空时的错误处理
-            item_code_item = self.materials_table.item(row, 0)
-            item_name_item = self.materials_table.item(row, 1)
+            item_code_item = self.materials_table.item(row, 1)
+            item_name_item = self.materials_table.item(row, 2)
             
             if item_code_item and item_name_item:
                 item_code = item_code_item.text()
@@ -990,6 +1092,26 @@ class MaterialSelectionDialog(QDialog):
             else:
                 # 如果表格项为空，隐藏该行
                 self.materials_table.setRowHidden(row, True)
+    
+    def on_checkbox_changed(self, state, row):
+        """复选框状态改变"""
+        # 这里可以添加选中状态变化的处理逻辑
+        pass
+    
+    def select_all_materials(self):
+        """全选所有物料"""
+        for row in range(self.materials_table.rowCount()):
+            if not self.materials_table.isRowHidden(row):
+                checkbox = self.materials_table.cellWidget(row, 0)
+                if checkbox:
+                    checkbox.setChecked(True)
+    
+    def clear_all_selections(self):
+        """清空所有选择"""
+        for row in range(self.materials_table.rowCount()):
+            checkbox = self.materials_table.cellWidget(row, 0)
+            if checkbox:
+                checkbox.setChecked(False)
 
     def on_item_double_clicked(self, item, column):
         """双击选择物料"""
@@ -997,35 +1119,42 @@ class MaterialSelectionDialog(QDialog):
 
     def select_material(self):
         """选择物料"""
-        current_row = self.materials_table.currentRow()
-        if current_row >= 0:
-            item_code = self.materials_table.item(current_row, 0).text()
-            item_name = self.materials_table.item(current_row, 1).text()
-            item_type = self.materials_table.item(current_row, 2).text()
-            
-            # 根据物料编码查找完整的物料信息
-            try:
-                items = ItemService.search_items(item_code)
-                if items and len(items) > 0:
-                    item = items[0]
-                    self.selected_material = {
-                        'ItemId': item['ItemId'] if 'ItemId' in item.keys() else 0,
-                        'ItemCode': item_code,
-                        'CnName': item_name,
-                        'ItemType': item_type
-                    }
-                    self.accept()
-                else:
-                    QMessageBox.warning(self, "警告", "无法获取物料详细信息！")
-            except Exception as e:
-                print(f"获取物料信息失败: {e}")
-                QMessageBox.warning(self, "警告", "获取物料信息失败！")
+        self.selected_materials = []
+        
+        for row in range(self.materials_table.rowCount()):
+            checkbox = self.materials_table.cellWidget(row, 0)
+            if checkbox and checkbox.isChecked():
+                item_code = self.materials_table.item(row, 1).text()
+                item_name = self.materials_table.item(row, 2).text()
+                item_spec = self.materials_table.item(row, 3).text()
+                item_brand = self.materials_table.item(row, 4).text()
+                item_type = self.materials_table.item(row, 5).text()
+                
+                # 根据物料编码查找完整的物料信息
+                try:
+                    items = ItemService.search_items(item_code)
+                    if items and len(items) > 0:
+                        item = items[0]
+                        material_data = {
+                            'ItemId': item['ItemId'] if 'ItemId' in item.keys() else 0,
+                            'ItemCode': item_code,
+                            'CnName': item_name,
+                            'ItemSpec': item_spec,
+                            'Brand': item_brand,
+                            'ItemType': item_type
+                        }
+                        self.selected_materials.append(material_data)
+                except Exception as e:
+                    print(f"获取物料信息失败: {e}")
+        
+        if self.selected_materials:
+            self.accept()
         else:
-            QMessageBox.warning(self, "警告", "请先选择一个物料！")
+            QMessageBox.warning(self, "警告", "请至少选择一个物料！")
 
-    def get_selected_material(self):
-        """获取选中的物料"""
-        return self.selected_material
+    def get_selected_materials(self):
+        """获取选中的物料列表"""
+        return self.selected_materials
 
 
 class BomManagementWidget(QWidget):
@@ -1059,6 +1188,65 @@ class BomManagementWidget(QWidget):
         """)
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
+
+        # 搜索栏
+        search_frame = QFrame()
+        search_layout = QHBoxLayout(search_frame)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout.setSpacing(8)
+
+        # 搜索标签
+        search_label = QLabel("搜索零部件:")
+        search_label.setStyleSheet("""
+            QLabel {
+                color: #262626;
+                font-size: 13px;
+                font-weight: 500;
+            }
+        """)
+        search_layout.addWidget(search_label)
+
+        # 搜索输入框
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("输入物料编码、名称或规格，查找使用了该零部件的BOM")
+        self.search_edit.setMinimumWidth(400)
+        self.search_edit.setStyleSheet("""
+            QLineEdit {
+                padding: 8px 12px;
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                font-size: 13px;
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border-color: #40a9ff;
+                outline: none;
+            }
+        """)
+        self.search_edit.textChanged.connect(self.on_search_changed)
+        search_layout.addWidget(self.search_edit)
+
+        # 重置按钮
+        reset_btn = QPushButton("重置")
+        reset_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                min-width: 60px;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        reset_btn.clicked.connect(self.on_reset_search)
+        search_layout.addWidget(reset_btn)
+
+        search_layout.addStretch()
+        layout.addWidget(search_frame)
 
         # 按钮栏
         button_frame = QFrame()
@@ -1104,7 +1292,7 @@ class BomManagementWidget(QWidget):
                 color: #40a9ff;
             }
         """)
-        self.refresh_btn.clicked.connect(self.load_boms)
+        self.refresh_btn.clicked.connect(lambda: self.load_boms())
 
         # BOM展开按钮
         self.expand_bom_btn = QPushButton("BOM展开")
@@ -1134,9 +1322,9 @@ class BomManagementWidget(QWidget):
 
         # BOM表格
         self.bom_table = QTableWidget()
-        self.bom_table.setColumnCount(8)
+        self.bom_table.setColumnCount(11)
         self.bom_table.setHorizontalHeaderLabels([
-            "BOM ID", "BOM名称", "版本", "生效日期", "失效日期", "备注", "状态", "操作"
+            "BOM ID", "BOM名称", "父产品编码", "父产品名称", "父产品规格", "版本", "生效日期", "失效日期", "备注", "状态", "操作"
         ])
 
         # 设置表格样式
@@ -1170,42 +1358,64 @@ class BomManagementWidget(QWidget):
         # 调整列宽
         header = self.bom_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # BOM ID
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # BOM名称
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 版本
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 生效日期
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 失效日期
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 备注
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 状态
-        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # 操作
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # BOM名称
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 父产品编码
+        header.setSectionResizeMode(3, QHeaderView.Stretch)  # 父产品名称
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 父产品规格
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 版本
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 生效日期
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # 失效日期
+        header.setSectionResizeMode(8, QHeaderView.Stretch)  # 备注
+        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)  # 状态
+        header.setSectionResizeMode(10, QHeaderView.Fixed)  # 操作
+        header.setDefaultSectionSize(120)  # 设置默认列宽
+        self.bom_table.setColumnWidth(10, 150)  # 设置操作列宽度
 
         layout.addWidget(self.bom_table)
 
-    def load_boms(self):
+    def load_boms(self, search_filter: str = None):
         """加载BOM列表"""
         try:
-            boms = BomService.get_bom_headers()
+            boms = BomService.get_bom_headers(search_filter)
             self.populate_bom_table(boms)
         except Exception as e:
             QMessageBox.critical(self, "错误", f"加载BOM列表失败: {str(e)}")
 
+    def on_search_changed(self):
+        """当搜索条件变化时，重新加载BOM列表"""
+        search_text = self.search_edit.text().strip()
+        self.load_boms(search_text if search_text else None)
+
+    def on_reset_search(self):
+        """重置搜索条件"""
+        self.search_edit.clear()
+        self.load_boms()
+
     def show_bom_expand_dialog(self):
         """显示BOM展开对话框"""
         try:
-            # 获取所有成品物料
-            items = ItemService.get_all_items()
-            fg_items = []
-            for item in items:
+            # 获取有BOM结构的成品物料
+            items_with_bom = []
+            all_items = ItemService.get_all_items()
+            
+            for item in all_items:
                 # 修复SQLite Row对象的访问方式
                 item_type = item['ItemType'] if 'ItemType' in item.keys() else ''
                 if item_type in ['FG', 'SFG']:
-                    fg_items.append(item)
+                    # 检查这个物料是否有BOM结构
+                    try:
+                        bom = BomService.get_bom_by_parent_item(item['ItemId'])
+                        if bom:
+                            items_with_bom.append(item)
+                    except:
+                        continue
             
-            if not fg_items:
-                QMessageBox.information(self, "提示", "没有找到成品或半成品物料")
+            if not items_with_bom:
+                QMessageBox.information(self, "提示", "没有找到有BOM结构的成品或半成品物料")
                 return
             
             # 创建BOM展开对话框
-            dialog = BomExpandDialog(self, fg_items)
+            dialog = BomExpandDialog(self, items_with_bom)
             if dialog.exec() == QDialog.Accepted:
                 pass  # 可以在这里添加后续处理逻辑
                 
@@ -1220,6 +1430,9 @@ class BomManagementWidget(QWidget):
             # 修复SQLite Row对象的访问方式
             bom_id = bom['BomId'] if 'BomId' in bom.keys() else ''
             bom_name = bom['BomName'] if 'BomName' in bom.keys() else ''
+            parent_item_code = bom['ParentItemCode'] if 'ParentItemCode' in bom.keys() else ''
+            parent_item_name = bom['ParentItemName'] if 'ParentItemName' in bom.keys() else ''
+            parent_item_spec = bom['ParentItemSpec'] if 'ParentItemSpec' in bom.keys() else ''
             rev = bom['Rev'] if 'Rev' in bom.keys() else ''
             effective_date = bom['EffectiveDate'] if 'EffectiveDate' in bom.keys() else ''
             expire_date = bom['ExpireDate'] if 'ExpireDate' in bom.keys() else ''
@@ -1229,21 +1442,28 @@ class BomManagementWidget(QWidget):
             self.bom_table.setItem(row, 0, QTableWidgetItem(str(bom_id)))
             # BOM名称
             self.bom_table.setItem(row, 1, QTableWidgetItem(str(bom_name)))
+            # 父产品编码
+            self.bom_table.setItem(row, 2, QTableWidgetItem(str(parent_item_code)))
+            # 父产品名称
+            self.bom_table.setItem(row, 3, QTableWidgetItem(str(parent_item_name)))
+            # 父产品规格
+            self.bom_table.setItem(row, 4, QTableWidgetItem(str(parent_item_spec)))
             # 版本
-            self.bom_table.setItem(row, 2, QTableWidgetItem(str(rev)))
+            self.bom_table.setItem(row, 5, QTableWidgetItem(str(rev)))
             # 生效日期
-            self.bom_table.setItem(row, 3, QTableWidgetItem(str(effective_date)))
+            self.bom_table.setItem(row, 6, QTableWidgetItem(str(effective_date)))
             # 失效日期
-            self.bom_table.setItem(row, 4, QTableWidgetItem(str(expire_date) if expire_date else ""))
+            expire_date_display = str(expire_date) if expire_date else "未设置"
+            self.bom_table.setItem(row, 7, QTableWidgetItem(expire_date_display))
             # 备注
-            self.bom_table.setItem(row, 5, QTableWidgetItem(str(remark) if remark else ""))
+            self.bom_table.setItem(row, 8, QTableWidgetItem(str(remark) if remark else ""))
             # 状态
             status = "有效" if not expire_date or expire_date >= QDate.currentDate().toString(
                 "yyyy-MM-dd") else "已过期"
             status_item = QTableWidgetItem(status)
             if status == "已过期":
                 status_item.setForeground(QColor("#ff4d4f"))
-            self.bom_table.setItem(row, 6, status_item)
+            self.bom_table.setItem(row, 9, status_item)
 
             # 操作按钮
             view_btn = QPushButton("查看")
@@ -1302,7 +1522,7 @@ class BomManagementWidget(QWidget):
 
             btn_widget = QWidget()
             btn_widget.setLayout(btn_layout)
-            self.bom_table.setCellWidget(row, 7, btn_widget)
+            self.bom_table.setCellWidget(row, 10, btn_widget)
 
     def add_bom(self):
         """新增BOM"""
@@ -1393,9 +1613,9 @@ class BomExpandDialog(QDialog):
         super().__init__(parent)
         self.fg_items = fg_items or []
         self.setWindowTitle("BOM展开")
-        self.resize(700, 550)
-        self.setMinimumSize(650, 500)
-        self.setMaximumSize(900, 700)
+        self.resize(800, 650)
+        self.setMinimumSize(700, 550)
+        self.setMaximumSize(1000, 800)
         self.setModal(True)
         self.setup_ui()
 
@@ -1418,7 +1638,7 @@ class BomExpandDialog(QDialog):
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
 
-        # 选择区域
+        # 选择区域 - 紧凑布局
         select_group = QGroupBox("选择产品和数量")
         select_group.setStyleSheet("""
             QGroupBox {
@@ -1438,7 +1658,7 @@ class BomExpandDialog(QDialog):
         """)
 
         select_layout = QFormLayout(select_group)
-        select_layout.setSpacing(15)
+        select_layout.setSpacing(10)
 
         # 产品选择
         self.product_combo = QComboBox()
@@ -1447,10 +1667,12 @@ class BomExpandDialog(QDialog):
             # 修复SQLite Row对象的访问方式
             item_code = item['ItemCode'] if 'ItemCode' in item.keys() else ''
             item_name = item['CnName'] if 'CnName' in item.keys() else ''
-            item_type = item['ItemType'] if 'ItemType' in item.keys() else ''
+            item_spec = item['ItemSpec'] if 'ItemSpec' in item.keys() else ''
+            item_brand = item['Brand'] if 'Brand' in item.keys() else ''
             item_id = item['ItemId'] if 'ItemId' in item.keys() else 0
             
-            display_text = f"{item_code} - {item_name} ({item_type})"
+            # 格式：商品品牌-物资名称-物资规格
+            display_text = f"{item_brand} - {item_name} - {item_spec}"
             self.product_combo.addItem(display_text, item_id)
         select_layout.addRow("产品 *:", self.product_combo)
 
@@ -1484,7 +1706,7 @@ class BomExpandDialog(QDialog):
 
         layout.addWidget(select_group)
 
-        # 结果区域
+        # 结果区域 - 占用更多空间
         result_group = QGroupBox("展开结果")
         result_group.setStyleSheet("""
             QGroupBox {
@@ -1504,6 +1726,7 @@ class BomExpandDialog(QDialog):
         """)
 
         result_layout = QVBoxLayout(result_group)
+        result_layout.setContentsMargins(10, 10, 10, 10)
 
         # 结果表格
         self.result_table = QTableWidget()
@@ -1539,6 +1762,8 @@ class BomExpandDialog(QDialog):
         self.result_table.setAlternatingRowColors(True)
         self.result_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.result_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.result_table.setMinimumHeight(300)  # 设置最小高度
+        self.result_table.verticalHeader().setDefaultSectionSize(30)  # 设置行高
 
         # 调整列宽
         header = self.result_table.horizontalHeader()
@@ -1863,18 +2088,27 @@ class BomViewDialog(QDialog):
 
     def setup_ui(self):
         """设置UI界面"""
+        # 设置对话框背景色
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+        """)
+        
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(20)
+        layout.setContentsMargins(20, 10, 20, 20)  # 减少顶部边距
+        layout.setSpacing(15)  # 减少间距
 
         # 标题
         title_label = QLabel("BOM 详情")
         title_label.setStyleSheet("""
             QLabel {
-                font-size: 20px;
+                font-size: 18px;
                 font-weight: bold;
                 color: #333;
-                padding: 15px;
+                padding: 8px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
             }
         """)
         title_label.setAlignment(Qt.AlignCenter)
@@ -1890,6 +2124,7 @@ class BomViewDialog(QDialog):
                 margin-top: 8px;
                 padding-top: 8px;
                 font-size: 13px;
+                background-color: white;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -1943,6 +2178,7 @@ class BomViewDialog(QDialog):
                 margin-top: 8px;
                 padding-top: 8px;
                 font-size: 13px;
+                background-color: white;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -1953,12 +2189,13 @@ class BomViewDialog(QDialog):
         """)
 
         structure_layout = QVBoxLayout(structure_group)
+        structure_layout.setContentsMargins(10, 15, 10, 10)  # 增加内边距
 
         # BOM结构表格
         self.structure_table = QTableWidget()
-        self.structure_table.setColumnCount(5)
+        self.structure_table.setColumnCount(6)
         self.structure_table.setHorizontalHeaderLabels([
-            "物料编码", "物料名称", "用量", "损耗率", "备注"
+            "物料编码", "物料名称", "规格型号", "用量", "损耗率", "备注"
         ])
 
         # 设置表格样式
@@ -1966,15 +2203,16 @@ class BomViewDialog(QDialog):
             QTableWidget {
                 gridline-color: #e8e8e8;
                 background-color: white;
-                alternate-background-color: #fafafa;
+                alternate-background-color: #f8f9fa;
                 selection-background-color: #e6f7ff;
                 selection-color: #262626;
                 border: 1px solid #e8e8e8;
                 border-radius: 4px;
                 font-size: 13px;
+                min-height: 300px;
             }
             QHeaderView::section {
-                background-color: #fafafa;
+                background-color: #f8f9fa;
                 color: #262626;
                 padding: 8px 6px;
                 border: none;
@@ -1993,9 +2231,10 @@ class BomViewDialog(QDialog):
         header = self.structure_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 物料编码
         header.setSectionResizeMode(1, QHeaderView.Stretch)  # 物料名称
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 用量
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 损耗率
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 备注
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 规格型号
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 用量
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 损耗率
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 备注
 
         structure_layout.addWidget(self.structure_table)
         layout.addWidget(structure_group)
@@ -2039,6 +2278,7 @@ class BomViewDialog(QDialog):
             # 修复SQLite Row对象的访问方式
             child_item_code = line['ChildItemCode'] if 'ChildItemCode' in line.keys() else ''
             child_item_name = line['ChildItemName'] if 'ChildItemName' in line.keys() else ''
+            child_item_spec = line['ChildItemSpec'] if 'ChildItemSpec' in line.keys() else ''
             qty_per = line['QtyPer'] if 'QtyPer' in line.keys() else 0
             scrap_factor = line['ScrapFactor'] if 'ScrapFactor' in line.keys() else 0
             remark = line['Remark'] if 'Remark' in line.keys() else ''
@@ -2047,12 +2287,14 @@ class BomViewDialog(QDialog):
             self.structure_table.setItem(row, 0, QTableWidgetItem(str(child_item_code)))
             # 物料名称
             self.structure_table.setItem(row, 1, QTableWidgetItem(str(child_item_name)))
+            # 规格型号
+            self.structure_table.setItem(row, 2, QTableWidgetItem(str(child_item_spec)))
             # 用量
-            self.structure_table.setItem(row, 2, QTableWidgetItem(str(qty_per)))
+            self.structure_table.setItem(row, 3, QTableWidgetItem(str(qty_per)))
             # 损耗率
             scrap_factor_display = f"{scrap_factor * 100:.1f}%" if scrap_factor else "0.0%"
-            self.structure_table.setItem(row, 3, QTableWidgetItem(scrap_factor_display))
+            self.structure_table.setItem(row, 4, QTableWidgetItem(scrap_factor_display))
             # 备注
-            self.structure_table.setItem(row, 4, QTableWidgetItem(str(remark) if remark else ""))
+            self.structure_table.setItem(row, 5, QTableWidgetItem(str(remark) if remark else ""))
 
 

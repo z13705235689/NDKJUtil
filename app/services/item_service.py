@@ -16,7 +16,6 @@ class ItemService:
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
             FROM Items i
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
-            WHERE i.IsActive = 1
             ORDER BY i.ItemCode
         """
         return ItemService._rows_to_dicts(query_all(sql))
@@ -27,7 +26,7 @@ class ItemService:
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
             FROM Items i
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
-            WHERE i.ItemId = ? AND i.IsActive = 1
+            WHERE i.ItemId = ?
         """
         row = query_one(sql, (item_id,))
         return dict(row) if row else None
@@ -37,8 +36,8 @@ class ItemService:
         sql = """
             INSERT INTO Items (
                 ItemCode, CnName, ItemSpec, ItemType, Unit, Quantity,
-                SafetyStock, Remark, ParentItemId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                SafetyStock, Remark, Brand, ParentItemId
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             item_data.get('ItemCode'),
@@ -49,6 +48,7 @@ class ItemService:
             item_data.get('Quantity', 1.0),
             item_data.get('SafetyStock', 0),
             item_data.get('Remark', ''),
+            item_data.get('Brand', ''),
             item_data.get('ParentItemId')
         )
         execute(sql, params)
@@ -60,7 +60,7 @@ class ItemService:
             UPDATE Items SET
                 ItemCode = ?, CnName = ?, ItemSpec = ?, ItemType = ?,
                 Unit = ?, Quantity = ?, SafetyStock = ?, Remark = ?,
-                ParentItemId = ?, UpdatedDate = CURRENT_TIMESTAMP
+                Brand = ?, ParentItemId = ?, UpdatedDate = CURRENT_TIMESTAMP
             WHERE ItemId = ?
         """
         params = (
@@ -72,6 +72,7 @@ class ItemService:
             item_data.get('Quantity', 1.0),
             item_data.get('SafetyStock', 0),
             item_data.get('Remark', ''),
+            item_data.get('Brand', ''),
             item_data.get('ParentItemId'),
             item_id
         )
@@ -79,7 +80,7 @@ class ItemService:
 
     @staticmethod
     def delete_item(item_id) -> None:
-        execute("UPDATE Items SET IsActive = 0 WHERE ItemId = ?", (item_id,))
+        execute("DELETE FROM Items WHERE ItemId = ?", (item_id,))
 
     @staticmethod
     def search_items(search_text: str) -> List[Dict]:
@@ -87,13 +88,13 @@ class ItemService:
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
             FROM Items i
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
-            WHERE i.IsActive = 1 AND (
-                i.ItemCode LIKE ? OR i.CnName LIKE ? OR i.ItemSpec LIKE ?
+            WHERE (
+                i.ItemCode LIKE ? OR i.CnName LIKE ? OR i.ItemSpec LIKE ? OR i.Brand LIKE ?
             )
             ORDER BY i.ItemCode
         """
         pattern = f"%{search_text}%"
-        return ItemService._rows_to_dicts(query_all(sql, (pattern, pattern, pattern)))
+        return ItemService._rows_to_dicts(query_all(sql, (pattern, pattern, pattern, pattern)))
 
     @staticmethod
     def get_items_by_type(item_type: str) -> List[Dict]:
@@ -101,7 +102,7 @@ class ItemService:
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
             FROM Items i
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
-            WHERE i.ItemType = ? AND i.IsActive = 1
+            WHERE i.ItemType = ?
             ORDER BY i.ItemCode
         """
         return ItemService._rows_to_dicts(query_all(sql, (item_type,)))
@@ -111,7 +112,7 @@ class ItemService:
         sql = """
             SELECT ItemId, ItemCode, CnName, ItemType
             FROM Items
-            WHERE IsActive = 1 AND ItemType IN ('FG', 'SFG', 'RM', 'PKG')
+            WHERE ItemType IN ('FG', 'SFG', 'RM', 'PKG')
         """
         params: List = []
         if exclude_item_id:
@@ -129,7 +130,7 @@ class ItemService:
         while current_parent_id and depth < 10:
             if current_parent_id == item_id:
                 return True
-            row = query_one("SELECT ParentItemId FROM Items WHERE ItemId=? AND IsActive=1",
+            row = query_one("SELECT ParentItemId FROM Items WHERE ItemId=?",
                             (current_parent_id,))
             current_parent_id = row['ParentItemId'] if row else None
             depth += 1
@@ -145,7 +146,7 @@ class ItemService:
                        p.ItemCode as ParentItemCode, p.CnName as ParentItemName
                 FROM Items i
                 LEFT JOIN Items p ON i.ParentItemId = p.ItemId
-                WHERE i.ItemId=? AND i.IsActive=1
+                WHERE i.ItemId=?
             """, (cur,))
             if not row: break
             out.append(dict(row))
@@ -157,7 +158,7 @@ class ItemService:
         sql = """
             SELECT ItemId, ItemCode, CnName, ItemType, ItemSpec, Unit, Quantity
             FROM Items
-            WHERE ParentItemId = ? AND IsActive = 1
+            WHERE ParentItemId = ?
             ORDER BY ItemCode
         """
         return ItemService._rows_to_dicts(query_all(sql, (item_id,)))

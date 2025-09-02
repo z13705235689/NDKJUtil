@@ -468,7 +468,7 @@ class ContentArea(QFrame):
         layout.addWidget(self.item_editor)
         
         return page
-    
+
     def create_bom_management_page(self):
         """创建BOM管理页面"""
         page = QWidget()

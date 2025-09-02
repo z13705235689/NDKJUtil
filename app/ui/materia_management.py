@@ -7,11 +7,13 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                                QCheckBox, QDialogButtonBox, QGridLayout,
                                QSpacerItem, QSizePolicy, QScrollArea,
                                QRadioButton, QButtonGroup, QTreeWidget, 
-                               QTreeWidgetItem)
-from PySide6.QtCore import Qt, QDate
+                               QTreeWidgetItem, QFileDialog, QProgressBar,
+                               QPlainTextEdit, QSplitter, QMenu, QApplication)
+from PySide6.QtCore import Qt, QDate, QThread, Signal
 from PySide6.QtGui import QFont, QColor
 from app.services.item_service import ItemService
 from app.services.bom_service import BomService
+from app.services.item_import_service import ItemImportService
 
 
 class ItemAddDialog(QDialog):
@@ -117,6 +119,12 @@ class ItemAddDialog(QDialog):
         parent_layout.addWidget(refresh_parent_btn)
         form_layout.addRow("归属物资:", parent_layout)
         
+        # 商品品牌
+        self.brand_edit = QLineEdit()
+        self.brand_edit.setPlaceholderText("请输入商品品牌（仅成品物料）")
+        self.brand_edit.setEnabled(False)  # 默认禁用
+        form_layout.addRow("商品品牌:", self.brand_edit)
+        
         # 备注
         self.remark_edit = QTextEdit()
         self.remark_edit.setMaximumHeight(60)
@@ -185,6 +193,9 @@ class ItemAddDialog(QDialog):
         
         # 初始化时加载上级物资列表
         self.load_parent_items()
+        
+        # 初始化时设置商品品牌字段的状态
+        self.on_item_type_changed()
     
     def on_item_type_changed(self):
         """物资类型改变时的处理"""
@@ -198,6 +209,16 @@ class ItemAddDialog(QDialog):
         else:
             self.parent_item_combo.setEnabled(False)
             self.parent_item_combo.setCurrentIndex(0)  # 设置为"无"
+        
+        # 根据物料类型启用/禁用商品品牌字段
+        # 只有成品(FG)才启用商品品牌字段
+        if current_type == "FG - 成品":
+            self.brand_edit.setEnabled(True)
+            self.brand_edit.setStyleSheet("")  # 恢复正常样式
+        else:
+            self.brand_edit.setEnabled(False)
+            self.brand_edit.clear()  # 清空内容
+            self.brand_edit.setStyleSheet("background-color: #f5f5f5;")  # 设置禁用样式
     
     def load_parent_items(self):
         """加载上级物资列表"""
@@ -253,6 +274,7 @@ class ItemAddDialog(QDialog):
             'Quantity': self.quantity_spin.value(),
             'SafetyStock': self.safety_stock_spin.value(),
             'Remark': self.remark_edit.toPlainText().strip(),
+            'Brand': self.brand_edit.text().strip() if item_type == 'FG' else '',
             'ParentItemId': parent_item_id
         }
 
@@ -324,6 +346,7 @@ class ItemEditDialog(QDialog):
         self.item_type_combo.addItems([
             "FG - 成品", "SFG - 半成品", "RM - 原材料", "PKG - 包装材料"
         ])
+        self.item_type_combo.currentTextChanged.connect(self.on_item_type_changed)
         basic_layout.addRow("物资类型*:", self.item_type_combo)
         
         # 单位
@@ -349,6 +372,12 @@ class ItemEditDialog(QDialog):
         self.parent_item_combo = QComboBox()
         self.parent_item_combo.setPlaceholderText("请选择上级物资")
         basic_layout.addRow("归属物资:", self.parent_item_combo)
+        
+        # 商品品牌
+        self.brand_edit = QLineEdit()
+        self.brand_edit.setPlaceholderText("请输入商品品牌（仅成品物料）")
+        self.brand_edit.setEnabled(False)  # 默认禁用
+        basic_layout.addRow("商品品牌:", self.brand_edit)
         
         # 备注
         self.remark_edit = QTextEdit()
@@ -427,6 +456,23 @@ class ItemEditDialog(QDialog):
         
         # 初始化时加载上级物资列表
         self.load_parent_items()
+        
+        # 初始化时设置商品品牌字段的状态
+        self.on_item_type_changed()
+    
+    def on_item_type_changed(self):
+        """物资类型改变时的处理"""
+        current_type = self.item_type_combo.currentText()
+        
+        # 根据物料类型启用/禁用商品品牌字段
+        # 只有成品(FG)才启用商品品牌字段
+        if current_type == "FG - 成品":
+            self.brand_edit.setEnabled(True)
+            self.brand_edit.setStyleSheet("")  # 恢复正常样式
+        else:
+            self.brand_edit.setEnabled(False)
+            self.brand_edit.clear()  # 清空内容
+            self.brand_edit.setStyleSheet("background-color: #f5f5f5;")  # 设置禁用样式
     
     def load_parent_items(self):
         """加载上级物资列表"""
@@ -500,6 +546,16 @@ class ItemEditDialog(QDialog):
                         self.parent_item_combo.setCurrentIndex(i)
                         break
             
+            # 设置商品品牌
+            self.brand_edit.setText(str(self.item_data['Brand'] if self.item_data['Brand'] else ''))
+            # 根据物料类型启用/禁用商品品牌字段
+            if item_type == 'FG':
+                self.brand_edit.setEnabled(True)
+                self.brand_edit.setStyleSheet("")
+            else:
+                self.brand_edit.setEnabled(False)
+                self.brand_edit.setStyleSheet("background-color: #f5f5f5;")
+            
             self.remark_edit.setPlainText(str(self.item_data['Remark'] if self.item_data['Remark'] else ''))
             
             print("物料数据加载完成")  # 调试信息
@@ -529,6 +585,7 @@ class ItemEditDialog(QDialog):
             'Quantity': self.quantity_spin.value(),
             'SafetyStock': self.safety_stock_spin.value(),
             'Remark': self.remark_edit.toPlainText().strip(),
+            'Brand': self.brand_edit.text().strip() if item_type == 'FG' else '',
             'ParentItemId': parent_item_id
         }
 
@@ -579,6 +636,28 @@ class ItemEditor(QWidget):
         """)
         self.add_btn.clicked.connect(self.add_item)
         
+        # 导入物料按钮
+        self.import_btn = QPushButton("导入物料")
+        self.import_btn.setStyleSheet("""
+            QPushButton {
+                background: #52c41a;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 90px;
+            }
+            QPushButton:hover {
+                background: #73d13d;
+            }
+            QPushButton:pressed {
+                background: #389e0d;
+            }
+        """)
+        self.import_btn.clicked.connect(self.import_items)
+        
         # 删除选中按钮
         self.delete_btn = QPushButton("删除选中")
         self.delete_btn.setStyleSheet("""
@@ -627,6 +706,7 @@ class ItemEditor(QWidget):
         self.refresh_btn.clicked.connect(self.load_items)
         
         button_layout.addWidget(self.add_btn)
+        button_layout.addWidget(self.import_btn)
         button_layout.addWidget(self.delete_btn)
         button_layout.addWidget(self.refresh_btn)
         
@@ -663,7 +743,8 @@ class ItemEditor(QWidget):
         
         search_label = QLabel("搜索:")
         self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("输入物料编码、名称或规格搜索...")
+        self.search_edit.setPlaceholderText("输入物料编码、名称、规格或商品品牌搜索...")
+        self.search_edit.textChanged.connect(self.on_search_text_changed)  # 添加实时搜索
         self.search_edit.setStyleSheet("""
             QLineEdit {
                 padding: 8px 14px;
@@ -723,6 +804,33 @@ class ItemEditor(QWidget):
         search_layout.addWidget(self.search_edit)
         search_layout.addWidget(self.search_btn)
         search_layout.addWidget(self.clear_search_btn)
+        
+        # 添加物料类型筛选
+        filter_label = QLabel("物料类型:")
+        self.type_filter_combo = QComboBox()
+        self.type_filter_combo.addItem("全部", "")
+        self.type_filter_combo.addItem("成品", "FG")
+        self.type_filter_combo.addItem("半成品", "SFG")
+        self.type_filter_combo.addItem("原材料", "RM")
+        self.type_filter_combo.addItem("包装材料", "PKG")
+        self.type_filter_combo.setStyleSheet("""
+            QComboBox {
+                padding: 8px 14px;
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                font-size: 13px;
+                min-width: 120px;
+                background: white;
+            }
+            QComboBox:focus {
+                border-color: #1890ff;
+                box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+            }
+        """)
+        self.type_filter_combo.currentTextChanged.connect(self.filter_by_type)
+        
+        search_layout.addWidget(filter_label)
+        search_layout.addWidget(self.type_filter_combo)
         search_layout.addStretch()
         
         layout.addWidget(search_frame)
@@ -731,8 +839,11 @@ class ItemEditor(QWidget):
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(10)  # 选择列 + 9个数据列
         self.items_table.setHorizontalHeaderLabels([
-            "全选", "物资编码", "物资名称", "物资规格", "物资类型", "单位", "组成数量", "安全库存", "归属物资", "操作"
+            "全选", "物资编码", "物资名称", "物资规格", "物资类型", "单位", "组成数量", "安全库存", "商品品牌", "操作"
         ])
+        
+        # 启用排序功能
+        self.items_table.setSortingEnabled(True)
         
         # 设置表格样式
         self.items_table.setStyleSheet("""
@@ -754,11 +865,19 @@ class ItemEditor(QWidget):
                 border-bottom: 2px solid #dee2e6;
                 font-weight: 600;
                 font-size: 13px;
+                position: relative;
             }
             QHeaderView::section:first {
                 font-size: 13px;
                 padding: 12px 8px;
                 text-align: center;
+            }
+            QHeaderView::section:hover {
+                background-color: #e9ecef;
+            }
+            QHeaderView::section:checked {
+                background-color: #1890ff;
+                color: white;
             }
         """)
         
@@ -781,6 +900,19 @@ class ItemEditor(QWidget):
         self.items_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.items_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         
+        # 启用复制功能
+        self.items_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.items_table.customContextMenuRequested.connect(self.show_context_menu)
+        
+        # 设置快捷键
+        self.items_table.setShortcutEnabled(True)
+        
+        # 添加键盘事件处理
+        self.items_table.keyPressEvent = self.table_key_press_event
+        
+        # 启用选择模式
+        self.items_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        
         # 设置行高
         self.items_table.verticalHeader().setDefaultSectionSize(45)
         self.items_table.verticalHeader().setMinimumSectionSize(40)
@@ -790,7 +922,7 @@ class ItemEditor(QWidget):
         
         # 调整列宽 - 根据内容动态调整
         header = self.items_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 选择列根据内容调整
+        header.setSectionResizeMode(0, QHeaderView.Fixed)             # 选择列固定宽度
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # 编码根据内容调整
         header.setSectionResizeMode(2, QHeaderView.Stretch)           # 名称自适应剩余空间
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 规格根据内容调整
@@ -798,12 +930,12 @@ class ItemEditor(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 单位根据内容调整
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 数量根据内容调整
         header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # 安全库存根据内容调整
-        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # 归属物资根据内容调整
-        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)  # 操作列根据内容调整
+        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # 商品品牌根据内容调整
+        header.setSectionResizeMode(9, QHeaderView.Fixed)             # 操作列固定宽度
         
-        # 设置最小列宽，防止过小
-        self.items_table.setColumnWidth(0, 50)   # 选择列最小宽度
-        self.items_table.setColumnWidth(9, 120)  # 操作列最小宽度
+        # 设置固定列宽
+        self.items_table.setColumnWidth(0, 50)   # 选择列宽度
+        self.items_table.setColumnWidth(9, 120)  # 操作列宽度
         
         # 在表头第一列添加全选复选框
         self.header_checkbox = QCheckBox()
@@ -848,6 +980,339 @@ class ItemEditor(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"加载物料列表失败: {str(e)}")
     
+    def filter_by_type(self):
+        """根据物料类型筛选"""
+        try:
+            # 获取当前选中的物料类型
+            selected_type = self.type_filter_combo.currentData()
+            
+            # 获取所有物料
+            all_items = ItemService.get_all_items()
+            
+            # 根据类型筛选
+            if selected_type:
+                filtered_items = [item for item in all_items if item['ItemType'] == selected_type]
+            else:
+                filtered_items = all_items
+            
+            # 重新填充表格
+            self.populate_items_table(filtered_items)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"筛选物料失败: {str(e)}")
+    
+    def search_items(self):
+        """搜索物料"""
+        try:
+            search_text = self.search_edit.text().strip()
+            selected_type = self.type_filter_combo.currentData()
+            
+            if search_text:
+                # 多字段搜索
+                items = self.search_items_by_multiple_fields(search_text)
+                
+                # 如果同时有类型筛选，进一步筛选
+                if selected_type:
+                    items = [item for item in items if item['ItemType'] == selected_type]
+            else:
+                # 没有搜索文本，只按类型筛选
+                if selected_type:
+                    all_items = ItemService.get_all_items()
+                    items = [item for item in all_items if item['ItemType'] == selected_type]
+                else:
+                    items = ItemService.get_all_items()
+            
+            self.populate_items_table(items)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"搜索物料失败: {str(e)}")
+    
+    def search_items_by_multiple_fields(self, search_text):
+        """多字段模糊搜索物料"""
+        try:
+            # 获取所有物料
+            all_items = ItemService.get_all_items()
+            search_text_lower = search_text.lower()
+            
+            # 在多个字段中进行模糊搜索
+            matched_items = []
+            for item in all_items:
+                # 检查编码 - 模糊匹配
+                item_code = (item.get('ItemCode', '') or '').lower()
+                if search_text_lower in item_code:
+                    matched_items.append(item)
+                    continue
+                
+                # 检查名称 - 模糊匹配
+                item_name = (item.get('CnName', '') or '').lower()
+                if search_text_lower in item_name:
+                    matched_items.append(item)
+                    continue
+                
+                # 检查规格 - 模糊匹配
+                item_spec = (item.get('ItemSpec', '') or '').lower()
+                if search_text_lower in item_spec:
+                    matched_items.append(item)
+                    continue
+                
+                # 检查商品品牌 - 模糊匹配
+                item_brand = (item.get('Brand', '') or '').lower()
+                if search_text_lower in item_brand:
+                    matched_items.append(item)
+                    continue
+            
+            return matched_items
+            
+        except Exception as e:
+            print(f"多字段模糊搜索失败: {e}")
+            # 如果多字段搜索失败，回退到原来的搜索方法
+            return ItemService.search_items(search_text)
+    
+    def on_search_text_changed(self):
+        """搜索文本改变时的实时搜索"""
+        # 使用定时器延迟搜索，避免频繁搜索
+        if hasattr(self, '_search_timer'):
+            self._search_timer.stop()
+        else:
+            from PySide6.QtCore import QTimer
+            self._search_timer = QTimer()
+            self._search_timer.setSingleShot(True)
+            self._search_timer.timeout.connect(self.search_items)
+        
+        # 300毫秒后执行搜索
+        self._search_timer.start(300)
+    
+    def clear_search(self):
+        """清空搜索"""
+        self.search_edit.clear()
+        self.type_filter_combo.setCurrentIndex(0)  # 重置为"全部"
+        self.load_items()  # 重新加载所有物料
+    
+    def show_context_menu(self, position):
+        """显示右键菜单"""
+        menu = QMenu()
+        
+        # 复制选中单元格内容
+        copy_action = menu.addAction("复制选中内容")
+        copy_action.triggered.connect(self.copy_selected_cells)
+        
+        # 复制整行
+        copy_row_action = menu.addAction("复制整行")
+        copy_row_action.triggered.connect(self.copy_selected_rows)
+        
+        # 复制所有选中行
+        copy_all_action = menu.addAction("复制所有选中行")
+        copy_all_action.triggered.connect(self.copy_all_selected_rows)
+        
+        # 添加分隔线
+        menu.addSeparator()
+        
+        # 测试复制功能
+        test_action = menu.addAction("测试复制")
+        test_action.triggered.connect(self.test_copy)
+        
+        # 显示菜单
+        menu.exec_(self.items_table.mapToGlobal(position))
+    
+    def copy_selected_cells(self):
+        """复制选中的单元格内容"""
+        try:
+            print("开始复制选中单元格...")
+            selected_ranges = self.items_table.selectedRanges()
+            print(f"选中的范围数量: {len(selected_ranges)}")
+            
+            if not selected_ranges:
+                print("没有选中任何内容")
+                QMessageBox.warning(self, "复制失败", "请先选中要复制的内容")
+                return
+            
+            clipboard_text = ""
+            for i, range_obj in enumerate(selected_ranges):
+                print(f"处理第 {i+1} 个范围: 行 {range_obj.topRow()}-{range_obj.bottomRow()}, 列 {range_obj.leftColumn()}-{range_obj.rightColumn()}")
+                
+                for row in range(range_obj.topRow(), range_obj.bottomRow() + 1):
+                    row_text = []
+                    for col in range(range_obj.leftColumn(), range_obj.rightColumn() + 1):
+                        # 跳过选择列（第0列）和操作列（第9列）
+                        if col == 0 or col == 9:
+                            row_text.append("")
+                            print(f"  跳过列 [{row},{col}]: 选择列或操作列")
+                            continue
+                        
+                        item = self.items_table.item(row, col)
+                        if item:
+                            cell_text = item.text()
+                            row_text.append(cell_text)
+                            print(f"  单元格 [{row},{col}]: {cell_text}")
+                        else:
+                            row_text.append("")
+                            print(f"  空单元格 [{row},{col}]")
+                    
+                    row_line = "\t".join(row_text)
+                    clipboard_text += row_line + "\n"
+                    print(f"  行内容: {row_line}")
+            
+            if clipboard_text.strip():
+                clipboard = QApplication.clipboard()
+                clipboard.setText(clipboard_text.strip())
+                print(f"已复制到剪贴板: {clipboard_text.strip()}")
+                QMessageBox.information(self, "复制成功", "内容已复制到剪贴板")
+            else:
+                print("没有内容可复制")
+                QMessageBox.warning(self, "复制失败", "没有选中任何内容")
+                
+        except Exception as e:
+            print(f"复制单元格内容失败: {e}")
+            QMessageBox.critical(self, "复制失败", f"复制过程中发生错误: {str(e)}")
+    
+    def copy_selected_rows(self):
+        """复制选中的整行"""
+        try:
+            selected_rows = set()
+            for range_obj in self.items_table.selectedRanges():
+                for row in range(range_obj.topRow(), range_obj.bottomRow() + 1):
+                    selected_rows.add(row)
+            
+            if not selected_rows:
+                return
+            
+            clipboard_text = ""
+            for row in sorted(selected_rows):
+                row_text = []
+                for col in range(self.items_table.columnCount()):
+                    item = self.items_table.item(row, col)
+                    if item:
+                        row_text.append(item.text())
+                    else:
+                        # 检查是否有自定义控件
+                        widget = self.items_table.cellWidget(row, col)
+                        if widget:
+                            checkbox = widget.findChild(QCheckBox)
+                            if checkbox:
+                                row_text.append("✓" if checkbox.isChecked() else "✗")
+                            else:
+                                row_text.append("")
+                        else:
+                            row_text.append("")
+                clipboard_text += "\t".join(row_text) + "\n"
+            
+            if clipboard_text:
+                clipboard = QApplication.clipboard()
+                clipboard.setText(clipboard_text.strip())
+                print("已复制选中行到剪贴板")
+                
+        except Exception as e:
+            print(f"复制选中行失败: {e}")
+    
+    def copy_all_selected_rows(self):
+        """复制所有选中的行（通过复选框）"""
+        try:
+            clipboard_text = ""
+            for row in range(self.items_table.rowCount()):
+                widget = self.items_table.cellWidget(row, 0)
+                if widget:
+                    checkbox = widget.findChild(QCheckBox)
+                    if checkbox and checkbox.isChecked():
+                        row_text = []
+                        for col in range(self.items_table.columnCount()):
+                            item = self.items_table.item(row, col)
+                            if item:
+                                row_text.append(item.text())
+                            else:
+                                widget = self.items_table.cellWidget(row, col)
+                                if widget:
+                                    checkbox = widget.findChild(QCheckBox)
+                                    if checkbox:
+                                        row_text.append("✓" if checkbox.isChecked() else "✗")
+                                    else:
+                                        row_text.append("")
+                                else:
+                                    row_text.append("")
+                        clipboard_text += "\t".join(row_text) + "\n"
+            
+            if clipboard_text:
+                clipboard = QApplication.clipboard()
+                clipboard.setText(clipboard_text.strip())
+                print("已复制所有选中行到剪贴板")
+            else:
+                print("没有选中的行")
+                
+        except Exception as e:
+            print(f"复制所有选中行失败: {e}")
+    
+    def test_copy(self):
+        """测试复制功能"""
+        try:
+            print("=== 测试复制功能 ===")
+            
+            # 获取当前选中的行
+            current_row = self.items_table.currentRow()
+            print(f"当前选中行: {current_row}")
+            
+            if current_row < 0:
+                QMessageBox.warning(self, "测试失败", "请先选中一行")
+                return
+            
+            # 获取该行的数据
+            row_data = []
+            for col in range(1, 9):  # 跳过选择列和操作列
+                item = self.items_table.item(current_row, col)
+                if item:
+                    row_data.append(item.text())
+                    print(f"列 {col}: {item.text()}")
+                else:
+                    row_data.append("")
+                    print(f"列 {col}: 空")
+            
+            # 复制到剪贴板
+            clipboard_text = "\t".join(row_data)
+            clipboard = QApplication.clipboard()
+            clipboard.setText(clipboard_text)
+            
+            print(f"测试复制内容: {clipboard_text}")
+            QMessageBox.information(self, "测试成功", f"已复制测试内容到剪贴板:\n{clipboard_text}")
+            
+        except Exception as e:
+            print(f"测试复制失败: {e}")
+            QMessageBox.critical(self, "测试失败", f"测试过程中发生错误: {str(e)}")
+    
+    def table_key_press_event(self, event):
+        """表格键盘事件处理"""
+        try:
+            print(f"键盘事件: key={event.key()}, modifiers={event.modifiers()}")
+            
+            # 处理 Ctrl+C 复制
+            if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:
+                print("检测到 Ctrl+C，开始复制...")
+                self.copy_selected_cells()
+                event.accept()
+                return
+            
+            # 处理 Ctrl+A 全选
+            elif event.key() == Qt.Key_A and event.modifiers() == Qt.ControlModifier:
+                print("检测到 Ctrl+A，全选...")
+                self.items_table.selectAll()
+                event.accept()
+                return
+            
+            # 处理 Delete 键删除选中项
+            elif event.key() == Qt.Key_Delete:
+                print("检测到 Delete 键...")
+                if self.selected_items:
+                    self.delete_selected_items()
+                event.accept()
+                return
+            
+            # 处理其他按键
+            else:
+                # 调用原始的键盘事件处理
+                QTableWidget.keyPressEvent(self.items_table, event)
+                
+        except Exception as e:
+            print(f"键盘事件处理失败: {e}")
+            # 调用原始的键盘事件处理
+            QTableWidget.keyPressEvent(self.items_table, event)
+    
     def populate_items_table(self, items):
         """填充物料表格"""
         self.items_table.setRowCount(len(items))
@@ -870,21 +1335,44 @@ class ItemEditor(QWidget):
             self.items_table.setCellWidget(row, 0, checkbox_widget)
             
             # 编码
-            self.items_table.setItem(row, 1, QTableWidgetItem(item['ItemCode']))
+            code_item = QTableWidgetItem(item['ItemCode'])
+            code_item.setData(Qt.UserRole, item['ItemCode'])  # 用于排序
+            self.items_table.setItem(row, 1, code_item)
+            
             # 名称
-            self.items_table.setItem(row, 2, QTableWidgetItem(item['CnName']))
+            name_item = QTableWidgetItem(item['CnName'])
+            name_item.setData(Qt.UserRole, item['CnName'])  # 用于排序
+            self.items_table.setItem(row, 2, name_item)
+            
             # 规格
-            self.items_table.setItem(row, 3, QTableWidgetItem(item['ItemSpec'] if item['ItemSpec'] else ""))
+            spec_item = QTableWidgetItem(item['ItemSpec'] if item['ItemSpec'] else "")
+            spec_item.setData(Qt.UserRole, item['ItemSpec'] if item['ItemSpec'] else "")  # 用于排序
+            self.items_table.setItem(row, 3, spec_item)
+            
             # 类型
-            self.items_table.setItem(row, 4, QTableWidgetItem(item['ItemType']))
+            type_item = QTableWidgetItem(item['ItemType'])
+            type_item.setData(Qt.UserRole, item['ItemType'])  # 用于排序
+            self.items_table.setItem(row, 4, type_item)
+            
             # 单位
-            self.items_table.setItem(row, 5, QTableWidgetItem(item['Unit']))
+            unit_item = QTableWidgetItem(item['Unit'])
+            unit_item.setData(Qt.UserRole, item['Unit'])  # 用于排序
+            self.items_table.setItem(row, 5, unit_item)
+            
             # 数量
-            self.items_table.setItem(row, 6, QTableWidgetItem(str(item['Quantity'])))
+            qty_item = QTableWidgetItem(str(item['Quantity']))
+            qty_item.setData(Qt.UserRole, float(item['Quantity']))  # 用于排序
+            self.items_table.setItem(row, 6, qty_item)
+            
             # 安全库存
-            self.items_table.setItem(row, 7, QTableWidgetItem(str(item['SafetyStock'])))
-            # 归属物资
-            self.items_table.setItem(row, 8, QTableWidgetItem(item['ParentItemName'] if item['ParentItemName'] else ""))
+            stock_item = QTableWidgetItem(str(item['SafetyStock']))
+            stock_item.setData(Qt.UserRole, float(item['SafetyStock']))  # 用于排序
+            self.items_table.setItem(row, 7, stock_item)
+            
+            # 商品品牌
+            brand_item = QTableWidgetItem(item['Brand'] if item['Brand'] else "")
+            brand_item.setData(Qt.UserRole, item['Brand'] if item['Brand'] else "")  # 用于排序
+            self.items_table.setItem(row, 8, brand_item)
             
             # 操作按钮
             edit_btn = QPushButton("编辑")
@@ -901,7 +1389,9 @@ class ItemEditor(QWidget):
                     background: #40a9ff;
                 }
             """)
-            edit_btn.clicked.connect(lambda checked, row=row: self.edit_item(row))
+            # 使用物料ID而不是行号
+            item_id = item['ItemId']
+            edit_btn.clicked.connect(lambda checked, item_id=item_id: self.edit_item_by_id(item_id))
             
             view_btn = QPushButton("查看")
             view_btn.setStyleSheet("""
@@ -917,7 +1407,8 @@ class ItemEditor(QWidget):
                     background: #73d13d;
                 }
             """)
-            view_btn.clicked.connect(lambda checked, row=row: self.view_item(row))
+            # 使用物料ID而不是行号
+            view_btn.clicked.connect(lambda checked, item_id=item_id: self.view_item_by_id(item_id))
             
             btn_layout = QHBoxLayout()
             btn_layout.addWidget(edit_btn)
@@ -930,6 +1421,14 @@ class ItemEditor(QWidget):
         
         # 更新按钮状态
         self._update_button_states()
+        
+        # 自动调整列宽
+        self.items_table.resizeColumnsToContents()
+        
+        # 确保名称列有足够的空间
+        name_column_width = self.items_table.columnWidth(2)
+        if name_column_width < 200:  # 如果名称列太窄，设置最小宽度
+            self.items_table.setColumnWidth(2, 200)
     
     def on_checkbox_state_changed(self, state):
         """复选框状态改变事件处理"""
@@ -1071,8 +1570,34 @@ class ItemEditor(QWidget):
         self.search_edit.clear()
         self.load_items()
     
+    def edit_item_by_id(self, item_id):
+        """通过物料ID编辑物料"""
+        try:
+            item = ItemService.get_item_by_id(item_id)
+            if item:
+                dialog = ItemEditDialog(item, self)
+                if dialog.exec() == QDialog.Accepted:
+                    updated_data = dialog.get_updated_item_data()
+                    try:
+                        # 检查是否会形成循环引用
+                        parent_item_id = updated_data.get('ParentItemId')
+                        if parent_item_id and ItemService.check_circular_reference(item_id, parent_item_id):
+                            QMessageBox.warning(self, "警告", "不能设置该上级物资，会形成循环引用！")
+                            return
+                        
+                        ItemService.update_item(item_id, updated_data)
+                        QMessageBox.information(self, "成功", "物料更新成功！")
+                        self.load_items()
+                    except Exception as e:
+                        QMessageBox.critical(self, "错误", f"更新物料失败: {str(e)}")
+            else:
+                QMessageBox.warning(self, "警告", "未找到物料信息")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"编辑物料失败: {str(e)}")
+    
     def edit_item(self, row):
-        """编辑物料"""
+        """编辑物料（通过行号，保留兼容性）"""
         try:
             # 从复选框属性中获取物料ID
             checkbox_widget = self.items_table.cellWidget(row, 0)
@@ -1081,25 +1606,7 @@ class ItemEditor(QWidget):
                 if checkbox:
                     item_id = checkbox.property("item_id")
                     if item_id:
-                        item = ItemService.get_item_by_id(item_id)
-                        if item:
-                            dialog = ItemEditDialog(item, self)
-                            if dialog.exec() == QDialog.Accepted:
-                                updated_data = dialog.get_updated_item_data()
-                                try:
-                                    # 检查是否会形成循环引用
-                                    parent_item_id = updated_data.get('ParentItemId')
-                                    if parent_item_id and ItemService.check_circular_reference(item_id, parent_item_id):
-                                        QMessageBox.warning(self, "警告", "不能设置该上级物资，会形成循环引用！")
-                                        return
-                                    
-                                    ItemService.update_item(item_id, updated_data)
-                                    QMessageBox.information(self, "成功", "物料更新成功！")
-                                    self.load_items()
-                                except Exception as e:
-                                    QMessageBox.critical(self, "错误", f"更新物料失败: {str(e)}")
-                        else:
-                            QMessageBox.warning(self, "警告", "未找到物料信息")
+                        self.edit_item_by_id(item_id)
                     else:
                         QMessageBox.warning(self, "警告", "物料ID无效")
                 else:
@@ -1110,18 +1617,10 @@ class ItemEditor(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"编辑物料失败: {str(e)}")
     
-    def view_item(self, row):
-        """查看物料详情"""
+    def view_item_by_id(self, item_id):
+        """通过物料ID查看物料详情"""
         try:
-            # 从复选框属性中获取物料ID
-            checkbox_widget = self.items_table.cellWidget(row, 0)
-            if checkbox_widget:
-                checkbox = checkbox_widget.findChild(QCheckBox)
-                if checkbox:
-                    item_id = checkbox.property("item_id")
-                    if item_id:
-                        item = ItemService.get_item_by_id(item_id)
-            
+            item = ItemService.get_item_by_id(item_id)
             if item:
                 # 创建详情对话框
                 detail_dialog = QDialog(self)
@@ -1163,7 +1662,7 @@ class ItemEditor(QWidget):
                     ("单位", item['Unit'] if item['Unit'] else '个'),
                     ("组成数量", str(item['Quantity'] if item['Quantity'] else 1.0)),
                     ("安全库存", str(item['SafetyStock'] if item['SafetyStock'] else 0)),
-                    ("上级物资", item['ParentItemName'] if item['ParentItemName'] else '无')
+                    ("商品品牌", item['Brand'] if item['Brand'] else '无')
                 ])
                 scroll_layout.addWidget(basic_group)
                 
@@ -1218,50 +1717,30 @@ class ItemEditor(QWidget):
                 button_box.accepted.connect(detail_dialog.accept)
                 layout.addWidget(button_box)
                 
-                # 设置样式
-                detail_dialog.setStyleSheet("""
-                    QDialog {
-                        background: white;
-                        border-radius: 8px;
-                    }
-                    QGroupBox {
-                        font-weight: 500;
-                        border: 1px solid #e8e8e8;
-                        border-radius: 6px;
-                        margin-top: 10px;
-                        padding-top: 15px;
-                        font-size: 13px;
-                        background: #fafafa;
-                    }
-                    QGroupBox::title {
-                        subcontrol-origin: margin;
-                        left: 12px;
-                        padding: 0 8px 0 8px;
-                        color: #262626;
-                        font-weight: 600;
-                    }
-                    QLabel {
-                        color: #595959;
-                        font-size: 13px;
-                    }
-                    QDialogButtonBox QPushButton {
-                        padding: 8px 20px;
-                        border-radius: 4px;
-                        font-size: 13px;
-                        font-weight: 500;
-                        min-width: 80px;
-                        background: #1890ff;
-                        color: white;
-                        border: none;
-                    }
-                    QDialogButtonBox QPushButton:hover {
-                        background: #40a9ff;
-                    }
-                """)
-                
                 detail_dialog.exec()
             else:
                 QMessageBox.warning(self, "警告", "未找到物料信息")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"查看物料详情失败: {str(e)}")
+    
+    def view_item(self, row):
+        """查看物料详情（通过行号，保留兼容性）"""
+        try:
+            # 从复选框属性中获取物料ID
+            checkbox_widget = self.items_table.cellWidget(row, 0)
+            if checkbox_widget:
+                checkbox = checkbox_widget.findChild(QCheckBox)
+                if checkbox:
+                    item_id = checkbox.property("item_id")
+                    if item_id:
+                        self.view_item_by_id(item_id)
+                    else:
+                        QMessageBox.warning(self, "警告", "物料ID无效")
+                else:
+                    QMessageBox.warning(self, "警告", "未找到复选框")
+            else:
+                QMessageBox.warning(self, "警告", "未找到复选框组件")
                 
         except Exception as e:
             QMessageBox.critical(self, "错误", f"查看物料详情失败: {str(e)}")
@@ -1429,6 +1908,448 @@ class ItemEditor(QWidget):
             
         except Exception as e:
             print(f"表头全选操作失败: {str(e)}")
+    
+    def import_items(self):
+        """导入物料"""
+        dialog = ItemImportDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            self.load_items()  # 刷新物料列表
+
+
+class ItemImportDialog(QDialog):
+    """物料导入对话框"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("导入物料")
+        self.setFixedSize(800, 650)
+        self.setModal(True)
+        self.import_data = []
+        self.setup_ui()
+        # 设置窗口尺寸策略，允许调整但限制范围
+        self.resize(800, 650)
+        self.setMinimumSize(700, 600)
+        self.setMaximumSize(900, 700)
+        # 添加调试信息
+        self.move_count = 0
+        self.last_pos = None
+    
+    def moveEvent(self, event):
+        """重写移动事件，添加调试信息"""
+        # 减少调试输出，只在必要时打印
+        if self.move_count % 20 == 0:  # 每20次移动才打印一次
+            print(f"=== 移动事件 #{self.move_count} ===")
+            print(f"  窗口位置: {self.pos().x()}, {self.pos().y()}")
+            print(f"  窗口尺寸: {self.width()} x {self.height()}")
+        
+        self.move_count += 1
+        self.last_pos = event.pos()
+        
+        # 调用父类方法
+        super().moveEvent(event)
+
+    
+    def resizeEvent(self, event):
+        """重写尺寸改变事件，添加调试信息"""
+        # 只在调试模式下打印
+        if hasattr(self, 'debug_mode') and self.debug_mode:
+            print(f"=== 尺寸改变事件 ===")
+            print(f"  旧尺寸: {event.oldSize().width()} x {event.oldSize().height()}")
+            print(f"  新尺寸: {event.size().width()} x {event.size().height()}")
+            print(f"  事件类型: {type(event).__name__}")
+            print("=" * 30)
+        
+        super().resizeEvent(event)
+
+    def showEvent(self, event):
+        """显示事件"""
+        super().showEvent(event)
+    
+    def hideEvent(self, event):
+        """隐藏事件"""
+        super().hideEvent(event)
+    
+    def paintEvent(self, event):
+        """绘制事件"""
+        super().paintEvent(event)
+    
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # 标题
+        title_label = QLabel("批量导入物料")
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #333;
+                padding: 10px;
+            }
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
+        
+        # 创建分割器
+        splitter = QSplitter(Qt.Vertical)
+        splitter.setChildrenCollapsible(False)
+        
+        # 说明文本
+        desc_text = """
+        导入说明：
+        1. 支持Excel(.xlsx, .xls)和CSV文件格式
+        2. 必需列：代码、名称、全名、规格型号
+        3. 可选列：商品品牌（仅对成品有效）
+        4. 全名字段前4-5个字用于判断物料类型：
+           - 包含"原材料" → 原材料(RM)
+           - 包含"成品" → 成品(FG)  
+           - 包含"半成品" → 半成品(SFG)
+           - 包含"包装材料"或"包装材" → 包装材料(PKG)
+           - 其他 → 默认为原材料(RM)
+        5. 商品品牌字段只有成品才会保存，其他类型物料会忽略该字段
+        """
+        
+        desc_label = QLabel(desc_text)
+        desc_label.setStyleSheet("""
+            QLabel {
+                background: #f6f8fa;
+                border: 1px solid #e1e4e8;
+                border-radius: 6px;
+                padding: 10px;
+                font-size: 12px;
+                color: #586069;
+                line-height: 1.3;
+            }
+        """)
+        desc_label.setWordWrap(True)
+        splitter.addWidget(desc_label)
+        
+        # 文件选择区域
+        file_group = QGroupBox("选择文件")
+        file_layout = QHBoxLayout(file_group)
+        
+        self.file_path_edit = QLineEdit()
+        self.file_path_edit.setPlaceholderText("请选择要导入的Excel或CSV文件...")
+        self.file_path_edit.setReadOnly(True)
+        
+        self.select_file_btn = QPushButton("选择文件")
+        self.select_file_btn.clicked.connect(self.select_file)
+        
+        file_layout.addWidget(self.file_path_edit)
+        file_layout.addWidget(self.select_file_btn)
+        splitter.addWidget(file_group)
+        
+        # 预览区域
+        preview_group = QGroupBox("数据预览")
+        preview_layout = QVBoxLayout(preview_group)
+        
+        # 预览表格
+        self.preview_table = QTableWidget()
+        preview_layout.addWidget(self.preview_table)
+            
+        # 预览信息
+        self.preview_info_label = QLabel("请先选择文件")
+        self.preview_info_label.setStyleSheet("color: #666; font-size: 12px;")
+        preview_layout.addWidget(self.preview_info_label)
+        
+        splitter.addWidget(preview_group)
+        
+        # 导入日志区域
+        log_group = QGroupBox("导入日志")
+        log_layout = QVBoxLayout(log_group)
+        
+        self.log_text = QPlainTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setStyleSheet("""
+            QPlainTextEdit {
+                background: #fafafa;
+                border: 1px solid #e1e4e8;
+                border-radius: 4px;
+                font-family: 'Consolas', monospace;
+                font-size: 12px;
+            }
+        """)
+        log_layout.addWidget(self.log_text)
+        
+        splitter.addWidget(log_group)
+        
+        # 设置分割器比例
+        splitter.setSizes([120, 80, 300, 150])
+        
+        # 将分割器添加到主布局
+        layout.addWidget(splitter)
+        
+        # 进度条
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        layout.addWidget(self.progress_bar)
+        
+        # 按钮区域
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        self.preview_btn = QPushButton("预览数据")
+        self.preview_btn.setEnabled(False)
+        self.preview_btn.clicked.connect(self.preview_data)
+        
+        self.import_btn = QPushButton("开始导入")
+        self.import_btn.setEnabled(False)
+        self.import_btn.clicked.connect(self.start_import)
+        
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)
+        
+        button_layout.addWidget(self.preview_btn)
+        button_layout.addWidget(self.import_btn)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+        
+        # 设置样式
+        self.setStyleSheet("""
+            QDialog {
+                background: white;
+            }
+            QLineEdit, QComboBox {
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border-color: #1890ff;
+            }
+            QPushButton {
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 14px;
+                min-width: 80px;
+            }
+            QPushButton[text="开始导入"] {
+                background: #1890ff;
+                color: white;
+                border: none;
+            }
+            QPushButton[text="开始导入"]:hover {
+                background: #40a9ff;
+            }
+            QPushButton[text="开始导入"]:disabled {
+                background: #d9d9d9;
+                color: #999;
+            }
+            QPushButton[text="预览数据"] {
+                background: #52c41a;
+                color: white;
+                border: none;
+            }
+            QPushButton[text="预览数据"]:hover {
+                background: #73d13d;
+            }
+            QPushButton[text="预览数据"]:disabled {
+                background: #d9d9d9;
+                color: #999;
+            }
+            QPushButton[text="取消"] {
+                background: white;
+                color: #666;
+                border: 1px solid #ccc;
+            }
+            QPushButton[text="取消"]:hover {
+                border-color: #1890ff;
+                color: #1890ff;
+            }
+            QPushButton[text="选择文件"] {
+                background: #f5f5f5;
+                color: #333;
+                border: 1px solid #d9d9d9;
+            }
+            QPushButton[text="选择文件"]:hover {
+                background: #e6f7ff;
+                border-color: #1890ff;
+                color: #1890ff;
+            }
+        """)
+    
+    def select_file(self):
+        """选择文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择导入文件",
+            "",
+            "Excel文件 (*.xlsx *.xls);;CSV文件 (*.csv);;所有文件 (*)"
+        )
+        
+        if file_path:
+            self.file_path_edit.setText(file_path)
+            self.preview_btn.setEnabled(True)
+            self.log_text.clear()
+            self.log_text.appendPlainText(f"已选择文件: {file_path}")
+    
+    def preview_data(self):
+        """预览数据"""
+        file_path = self.file_path_edit.text()
+        if not file_path:
+            QMessageBox.warning(self, "警告", "请先选择文件！")
+            return
+        
+        self.log_text.appendPlainText("正在读取文件...")
+        
+        try:
+            # 根据文件扩展名选择读取方法
+            if file_path.lower().endswith(('.xlsx', '.xls')):
+                data, errors = ItemImportService.read_excel_file(file_path)
+            elif file_path.lower().endswith('.csv'):
+                data, errors = ItemImportService.read_csv_file(file_path)
+            else:
+                QMessageBox.warning(self, "警告", "不支持的文件格式！")
+                return
+            
+            if errors:
+                self.log_text.appendPlainText("读取文件出错:")
+                for error in errors:
+                    self.log_text.appendPlainText(f"  - {error}")
+                return
+            
+            if not data:
+                self.log_text.appendPlainText("文件中没有有效数据")
+                return
+            
+            # 保存数据用于导入
+            self.import_data = data
+            
+            # 更新预览表格
+            self.update_preview_table(data)
+            
+            # 更新预览信息
+            self.preview_info_label.setText(f"共读取到 {len(data)} 行数据")
+            self.log_text.appendPlainText(f"成功读取 {len(data)} 行数据")
+            
+            # 启用导入按钮
+            self.import_btn.setEnabled(True)
+            
+        except Exception as e:
+            self.log_text.appendPlainText(f"预览数据失败: {str(e)}")
+            QMessageBox.critical(self, "错误", f"预览数据失败: {str(e)}")
+    
+    def update_preview_table(self, data):
+        """更新预览表格"""
+        if not data:
+            return
+        
+        # 获取所有列名
+        columns = list(data[0].keys())
+        
+        self.preview_table.setColumnCount(len(columns))
+        self.preview_table.setHorizontalHeaderLabels(columns)
+        
+        # 只显示前10行数据
+        preview_rows = min(10, len(data))
+        self.preview_table.setRowCount(preview_rows)
+        
+        for row in range(preview_rows):
+            for col, column_name in enumerate(columns):
+                value = data[row].get(column_name, '')
+                self.preview_table.setItem(row, col, QTableWidgetItem(str(value)))
+        
+        # 调整列宽
+        self.preview_table.resizeColumnsToContents()
+    
+    def start_import(self):
+        """开始导入"""
+        if not self.import_data:
+            QMessageBox.warning(self, "警告", "没有可导入的数据！")
+            return
+        
+        # 确认导入
+        reply = QMessageBox.question(
+            self, "确认导入",
+            f"确定要导入 {len(self.import_data)} 条物料数据吗？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        # 禁用按钮
+        self.import_btn.setEnabled(False)
+        self.preview_btn.setEnabled(False)
+        
+        # 显示进度条
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setRange(0, 0)  # 不确定进度
+        
+        self.log_text.appendPlainText("开始导入数据...")
+        
+        try:
+            # 执行导入
+            success_count, errors, skipped_codes = ItemImportService.import_items(self.import_data)
+            
+            # 隐藏进度条
+            self.progress_bar.setVisible(False)
+            
+            # 显示导入结果
+            result_messages = []
+            
+            if success_count > 0:
+                self.log_text.appendPlainText(f"成功导入 {success_count} 条物料数据")
+                result_messages.append(f"成功导入 {success_count} 条数据")
+            
+            if skipped_codes:
+                self.log_text.appendPlainText(f"跳过已存在的编码 ({len(skipped_codes)} 个):")
+                for code in skipped_codes:
+                    self.log_text.appendPlainText(f"  - {code}")
+                result_messages.append(f"跳过 {len(skipped_codes)} 个已存在的编码")
+            
+            if errors:
+                self.log_text.appendPlainText("导入过程中出现以下错误:")
+                for error in errors:
+                    self.log_text.appendPlainText(f"  - {error}")
+                result_messages.append(f"{len(errors)} 个错误")
+            
+            # 构建结果消息
+            if success_count > 0 or skipped_codes:
+                if errors:
+                    # 部分成功
+                    message = "\n".join(result_messages)
+                    if skipped_codes:
+                        message += f"\n\n跳过的编码: {', '.join(skipped_codes)}"
+                    QMessageBox.warning(
+                        self, "导入完成（有问题）",
+                        f"{message}\n\n请查看日志了解详情。"
+                    )
+                else:
+                    # 完全成功
+                    if skipped_codes:
+                        message = f"导入完成！\n成功导入 {success_count} 条数据\n跳过 {len(skipped_codes)} 个已存在的编码\n\n跳过的编码: {', '.join(skipped_codes)}"
+                        QMessageBox.information(self, "导入完成", message)
+                    else:
+                        QMessageBox.information(self, "导入成功", f"成功导入 {success_count} 条物料数据！")
+                
+                # 导入有结果时关闭对话框
+                self.accept()
+            else:
+                # 完全失败
+                self.log_text.appendPlainText("导入失败:")
+                for error in errors:
+                    self.log_text.appendPlainText(f"  - {error}")
+                
+                QMessageBox.critical(
+                    self, "导入失败",
+                    f"导入失败，共 {len(errors)} 个错误。\n请查看日志了解详情。"
+                )
+            
+        except Exception as e:
+            self.progress_bar.setVisible(False)
+            error_msg = f"导入过程中发生异常: {str(e)}"
+            self.log_text.appendPlainText(error_msg)
+            QMessageBox.critical(self, "错误", error_msg)
+        
+        finally:
+            # 重新启用按钮
+            self.import_btn.setEnabled(True)
+            self.preview_btn.setEnabled(True)
 
 
 class BomEditor(QWidget):

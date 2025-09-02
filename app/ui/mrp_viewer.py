@@ -19,30 +19,40 @@ class MRPCalcThread(QThread):
     failed = Signal(str)
 
     def __init__(self, start_date: str, end_date: str, import_id: Optional[int] = None, 
-                 parent_item_filter: Optional[str] = None, calc_type: str = "child"):
+                  search_filter: Optional[str] = None, calc_type: str = "child"):
         super().__init__()
         self.start_date = start_date
         self.end_date = end_date
         self.import_id = import_id
-        self.parent_item_filter = parent_item_filter
+        self.search_filter = search_filter
         self.calc_type = calc_type  # "child" 或 "parent"
 
     def run(self):
         try:
+            print(f"🔄 [MRPCalcThread] 开始MRP计算")
+            print(f"🔄 [MRPCalcThread] 参数：start_date={self.start_date}, end_date={self.end_date}")
+            print(f"🔄 [MRPCalcThread] 参数：import_id={self.import_id}, search_filter={self.search_filter}")
+            print(f"🔄 [MRPCalcThread] 计算类型：{self.calc_type}")
+            
             if self.calc_type == "child":
                 # 计算零部件MRP
+                print(f"🔄 [MRPCalcThread] 调用 calculate_mrp_kanban")
                 data = MRPService.calculate_mrp_kanban(
                     self.start_date, self.end_date, 
-                    self.import_id, self.parent_item_filter
+                    self.import_id, self.search_filter
                 )
             else:
                 # 计算成品MRP
+                print(f"🔄 [MRPCalcThread] 调用 calculate_parent_mrp_kanban")
                 data = MRPService.calculate_parent_mrp_kanban(
                     self.start_date, self.end_date, 
-                    self.import_id, self.parent_item_filter
+                    self.import_id, self.search_filter
                 )
+            
+            print(f"✅ [MRPCalcThread] 计算完成，返回数据：weeks={len(data.get('weeks', []))}, rows={len(data.get('rows', []))}")
             self.finished.emit(data)
         except Exception as e:
+            print(f"❌ [MRPCalcThread] 计算失败：{str(e)}")
             self.failed.emit(str(e))
 
 class MRPViewer(QWidget):
@@ -109,11 +119,34 @@ class MRPViewer(QWidget):
         self.order_version_combo.setMinimumWidth(300)
         order_layout.addWidget(self.order_version_combo)
         
-        order_layout.addWidget(QLabel("成品筛选:"))
-        self.parent_item_filter_edit = QLineEdit()
-        self.parent_item_filter_edit.setPlaceholderText("输入成品编码或名称进行筛选（留空表示所有成品）")
-        self.parent_item_filter_edit.setMinimumWidth(300)
-        order_layout.addWidget(self.parent_item_filter_edit)
+        order_layout.addWidget(QLabel("搜索:"))
+        search_layout = QHBoxLayout()
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("输入物料名称或规格进行实时搜索")
+        self.search_edit.setMinimumWidth(300)
+        self.search_edit.textChanged.connect(self.on_search_changed)
+        search_layout.addWidget(self.search_edit)
+        
+        # 添加重置按钮
+        reset_btn = QPushButton("重置")
+        reset_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-weight: bold;
+                min-width: 60px;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        reset_btn.clicked.connect(self.on_reset_search)
+        search_layout.addWidget(reset_btn)
+        
+        order_layout.addLayout(search_layout)
         
         # 添加刷新按钮
         refresh_btn = QPushButton("刷新订单版本")
@@ -303,20 +336,28 @@ class MRPViewer(QWidget):
 
     # ---- 交互 ----
     def on_calc(self):
+        print(f"🔘 [on_calc] 用户点击计算按钮")
+        
         s = self.dt_start.date().toString("yyyy-MM-dd")
         e = self.dt_end.date().toString("yyyy-MM-dd")
+        print(f"🔘 [on_calc] 日期范围：{s} 到 {e}")
+        
         if self.dt_start.date() >= self.dt_end.date():
+            print(f"❌ [on_calc] 日期范围错误")
             QMessageBox.warning(self, "提示", "结束日期必须大于开始日期")
             return
             
         # 获取选择的客户订单版本ID
         import_id = self.order_version_combo.currentData()
+        print(f"🔘 [on_calc] 客户订单版本ID：{import_id}")
         
-        # 获取成品筛选条件
-        parent_item_filter = self.parent_item_filter_edit.text().strip() or None
+        # 获取搜索条件
+        search_filter = self.search_edit.text().strip() or None
+        print(f"🔘 [on_calc] 搜索条件：{search_filter}")
         
         # 获取计算类型
         calc_type = "child" if self.calc_type_combo.currentText() == "零部件MRP" else "parent"
+        print(f"🔘 [on_calc] 计算类型：{calc_type}")
         
         self.btn_calc.setEnabled(False)
         self.btn_export.setEnabled(False)  # 禁用导出按钮
@@ -328,17 +369,36 @@ class MRPViewer(QWidget):
         self.tbl.setHorizontalHeaderLabels(["计算中..."])
         self.tbl.setItem(0, 0, QTableWidgetItem("正在计算MRP，请稍候..."))
         
-        self._thread = MRPCalcThread(s, e, import_id, parent_item_filter, calc_type)
+        self._thread = MRPCalcThread(s, e, import_id, search_filter, calc_type)
         self._thread.finished.connect(self.render_board)
         self._thread.failed.connect(self.show_error)
         self._thread.start()
 
     def show_error(self, msg: str):
+        print(f"❌ [show_error] 显示错误：{msg}")
         self.btn_calc.setEnabled(True)
         QMessageBox.critical(self, "错误", msg)
 
+    def on_search_changed(self):
+        """当搜索条件变化时，自动重新计算"""
+        print(f"🔍 [on_search_changed] 搜索条件变化，触发重新计算")
+        # 如果当前有数据，则重新渲染（不重新计算，只过滤显示）
+        if hasattr(self, '_current_data') and self._current_data:
+            self.render_board(self._current_data)
+
+    def on_reset_search(self):
+        """重置搜索条件"""
+        print(f"🔄 [on_reset_search] 重置搜索条件")
+        self.search_edit.clear()
+        # 如果当前有数据，则重新渲染显示所有数据
+        if hasattr(self, '_current_data') and self._current_data:
+            self.render_board(self._current_data)
+
     # ---- 渲染 ----
     def render_board(self, data: dict):
+        print(f"🎨 [render_board] 开始渲染MRP看板")
+        print(f"🎨 [render_board] 接收数据：{data}")
+        
         self.btn_calc.setEnabled(True)
         self.btn_export.setEnabled(True)  # 启用导出按钮
         
@@ -346,10 +406,26 @@ class MRPViewer(QWidget):
         self._current_data = data
         
         if not data:
+            print(f"❌ [render_board] 数据为空，清空表格")
             self.tbl.setRowCount(0); self.tbl.setColumnCount(0); return
 
         weeks = data.get("weeks", [])
         rows = data.get("rows", [])
+        
+        # 根据搜索条件过滤数据
+        search_text = self.search_edit.text().strip().lower()
+        if search_text:
+            print(f"🔍 [render_board] 应用搜索过滤：{search_text}")
+            filtered_rows = []
+            for row in rows:
+                item_name = row.get("ItemName", "").lower()
+                item_spec = row.get("ItemSpec", "").lower()
+                if search_text in item_name or search_text in item_spec:
+                    filtered_rows.append(row)
+            rows = filtered_rows
+            print(f"🔍 [render_board] 过滤后数据行数：{len(rows)}")
+        
+        print(f"🎨 [render_board] 数据解析：weeks={weeks}, rows数量={len(rows)}")
 
         # 构建年份分组和合计列
         colspec = self._build_week_columns_with_totals(weeks)
@@ -357,11 +433,11 @@ class MRPViewer(QWidget):
         # 根据计算类型设置不同的列标题
         calc_type = self.calc_type_combo.currentText()
         if calc_type == "零部件MRP":
-            # 零部件MRP：物料编码、名称、类型、行别、期初库存、各周、合计
-            fixed_headers = ["物料编码", "物料名称", "物料类型", "行别", "期初库存"]
+            # 零部件MRP：物料名称、规格、类型、行别、期初库存、各周、合计
+            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
         else:
-            # 成品MRP：物料编码、名称、类型、行别、期初库存、各周、合计
-            fixed_headers = ["成品编码", "成品名称", "成品类型", "行别", "期初库存"]
+            # 成品MRP：物料名称、规格、类型、行别、期初库存、各周、合计
+            fixed_headers = ["物料名称", "物料规格", "成品类型", "行别", "期初库存"]
         
         # 设置列数和标题
         headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
@@ -387,8 +463,14 @@ class MRPViewer(QWidget):
         # 设置总计列标题
         self.tbl.setHorizontalHeaderItem(headers_count - 1, QTableWidgetItem("Total"))
 
-        # 增加一行用于显示日期
-        self.tbl.setRowCount(len(rows) + 2)  # +1 for date row, +1 for total row
+        # 增加行用于显示日期和总计行
+        calc_type = self.calc_type_combo.currentText()
+        if calc_type == "成品MRP":
+            # 成品MRP：日期行 + 数据行 + 生产计划总计行 + 即时库存总计行
+            self.tbl.setRowCount(len(rows) + 3)  # +1 for date row, +2 for total rows
+        else:
+            # 零部件MRP：日期行 + 数据行 + 总计行
+            self.tbl.setRowCount(len(rows) + 2)  # +1 for date row, +1 for total row
         
         # 设置颜色
         green_bg = QBrush(QColor(235, 252, 239))  # 生产计划绿色
@@ -429,8 +511,8 @@ class MRPViewer(QWidget):
             actual_row = r + 1  # 实际行号要+1，因为第一行是日期行
             
             # 基本信息列
-            self._set_item(actual_row, 0, row.get("ItemCode", ""))
-            self._set_item(actual_row, 1, row.get("ItemName", ""))
+            self._set_item(actual_row, 0, row.get("ItemName", ""))
+            self._set_item(actual_row, 1, row.get("ItemSpec", ""))
             self._set_item(actual_row, 2, row.get("ItemType", ""))
             self._set_item(actual_row, 3, row.get("RowType", ""))
             self._set_item(actual_row, 4, self._fmt(row.get("StartOnHand", 0)))
@@ -476,25 +558,81 @@ class MRPViewer(QWidget):
             self.tbl.setItem(actual_row, headers_count - 1, total_item)
 
         # 总计行
-        total_row = len(rows) + 1
-        self.tbl.setItem(total_row, 0, QTableWidgetItem("TOTAL"))
-        
-        # 只从周列开始统计（前5列不算）
-        for col in range(base_col, headers_count):
-            s = 0
-            for r in range(1, total_row):  # 从1开始，跳过日期行
-                it = self.tbl.item(r, col)
-                try:
-                    if it and it.text().strip():
-                        s += float(it.text().replace(',', ''))
-                except:
-                    pass
-            item = QTableWidgetItem(self._fmt(s))
-            font = item.font()
-            font.setBold(True)
-            item.setFont(font)
-            item.setBackground(blue_bg)  # 总计行标蓝色
-            self.tbl.setItem(total_row, col, item)
+        calc_type = self.calc_type_combo.currentText()
+        if calc_type == "成品MRP":
+            # 成品MRP：两行总计行
+            # 第一行：生产计划总计
+            plan_total_row = len(rows) + 1
+            self.tbl.setItem(plan_total_row, 0, QTableWidgetItem("生产计划TOTAL"))
+            self.tbl.setItem(plan_total_row, 1, QTableWidgetItem(""))
+            self.tbl.setItem(plan_total_row, 2, QTableWidgetItem(""))
+            self.tbl.setItem(plan_total_row, 3, QTableWidgetItem("生产计划"))
+            self.tbl.setItem(plan_total_row, 4, QTableWidgetItem(""))
+            
+            # 第二行：即时库存总计
+            stock_total_row = len(rows) + 2
+            self.tbl.setItem(stock_total_row, 0, QTableWidgetItem("即时库存TOTAL"))
+            self.tbl.setItem(stock_total_row, 1, QTableWidgetItem(""))
+            self.tbl.setItem(stock_total_row, 2, QTableWidgetItem(""))
+            self.tbl.setItem(stock_total_row, 3, QTableWidgetItem("即时库存"))
+            self.tbl.setItem(stock_total_row, 4, QTableWidgetItem(""))
+            
+            # 计算生产计划总计（只统计生产计划行）
+            for col in range(base_col, headers_count):
+                plan_sum = 0
+                for r in range(1, plan_total_row):  # 从1开始，跳过日期行
+                    it = self.tbl.item(r, col)
+                    row_type_it = self.tbl.item(r, 3)  # 行别列
+                    try:
+                        if it and it.text().strip() and row_type_it and row_type_it.text() == "生产计划":
+                            plan_sum += float(it.text().replace(',', ''))
+                    except:
+                        pass
+                item = QTableWidgetItem(self._fmt(plan_sum))
+                font = item.font()
+                font.setBold(True)
+                item.setFont(font)
+                item.setBackground(green_bg)  # 生产计划总计标绿色
+                self.tbl.setItem(plan_total_row, col, item)
+            
+            # 计算即时库存总计（只统计即时库存行）
+            for col in range(base_col, headers_count):
+                stock_sum = 0
+                for r in range(1, stock_total_row):  # 从1开始，跳过日期行
+                    it = self.tbl.item(r, col)
+                    row_type_it = self.tbl.item(r, 3)  # 行别列
+                    try:
+                        if it and it.text().strip() and row_type_it and row_type_it.text() == "即时库存":
+                            stock_sum += float(it.text().replace(',', ''))
+                    except:
+                        pass
+                item = QTableWidgetItem(self._fmt(stock_sum))
+                font = item.font()
+                font.setBold(True)
+                item.setFont(font)
+                item.setBackground(red_bg)  # 即时库存总计标红色
+                self.tbl.setItem(stock_total_row, col, item)
+        else:
+            # 零部件MRP：一行总计行
+            total_row = len(rows) + 1
+            self.tbl.setItem(total_row, 0, QTableWidgetItem("TOTAL"))
+            
+            # 只从周列开始统计（前5列不算）
+            for col in range(base_col, headers_count):
+                s = 0
+                for r in range(1, total_row):  # 从1开始，跳过日期行
+                    it = self.tbl.item(r, col)
+                    try:
+                        if it and it.text().strip():
+                            s += float(it.text().replace(',', ''))
+                    except:
+                        pass
+                item = QTableWidgetItem(self._fmt(s))
+                font = item.font()
+                font.setBold(True)
+                item.setFont(font)
+                item.setBackground(blue_bg)  # 总计行标蓝色
+                self.tbl.setItem(total_row, col, item)
 
         # 小优化：把计划/库存两行当作一个分组阅读
         if calc_type == "零部件MRP":
@@ -688,9 +826,9 @@ class MRPViewer(QWidget):
         
         # 设置列标题
         if calc_type == "零部件MRP":
-            fixed_headers = ["物料编码", "物料名称", "物料类型", "行别", "期初库存"]
+            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
         else:
-            fixed_headers = ["成品编码", "成品名称", "成品类型", "行别", "期初库存"]
+            fixed_headers = ["物料名称", "物料规格", "成品类型", "行别", "期初库存"]
         
         headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
         
@@ -753,8 +891,8 @@ class MRPViewer(QWidget):
             
             # 基本信息列
             basic_info = [
-                row_data.get("ItemCode", ""),
                 row_data.get("ItemName", ""),
+                row_data.get("ItemSpec", ""),
                 row_data.get("ItemType", ""),
                 row_data.get("RowType", ""),
                 self._fmt(row_data.get("StartOnHand", 0))

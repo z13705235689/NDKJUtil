@@ -6,19 +6,39 @@ class BomService:
     """BOM管理服务"""
     
     @staticmethod
-    def get_bom_headers() -> List[Dict]:
-        """获取所有BOM主表"""
+    def get_bom_headers(search_filter: str = None) -> List[Dict]:
+        """获取所有BOM主表，支持搜索"""
         try:
-            sql = """
-                SELECT bh.BomId, bh.BomName, bh.ParentItemId, bh.Rev, bh.EffectiveDate, 
-                       bh.ExpireDate, bh.Remark, bh.CreatedDate,
-                       i.ItemCode as ParentItemCode, i.CnName as ParentItemName,
-                       i.ItemType as ParentItemType
-                FROM BomHeaders bh
-                LEFT JOIN Items i ON bh.ParentItemId = i.ItemId
-                ORDER BY bh.BomName, bh.Rev
-            """
-            return query_all(sql)
+            if search_filter:
+                # 搜索使用了特定零部件的BOM
+                sql = """
+                    SELECT DISTINCT bh.BomId, bh.BomName, bh.ParentItemId, bh.Rev, bh.EffectiveDate, 
+                           bh.ExpireDate, bh.Remark, bh.CreatedDate,
+                           i.ItemCode as ParentItemCode, i.CnName as ParentItemName,
+                           i.ItemType as ParentItemType, i.ItemSpec as ParentItemSpec
+                    FROM BomHeaders bh
+                    LEFT JOIN Items i ON bh.ParentItemId = i.ItemId
+                    JOIN BomLines bl ON bh.BomId = bl.BomId
+                    JOIN Items child_item ON bl.ChildItemId = child_item.ItemId
+                    WHERE (child_item.ItemCode LIKE ? OR child_item.CnName LIKE ? OR child_item.ItemSpec LIKE ?)
+                    ORDER BY bh.BomName, bh.Rev
+                """
+                search_pattern = f"%{search_filter}%"
+                results = query_all(sql, (search_pattern, search_pattern, search_pattern))
+            else:
+                # 获取所有BOM
+                sql = """
+                    SELECT bh.BomId, bh.BomName, bh.ParentItemId, bh.Rev, bh.EffectiveDate, 
+                           bh.ExpireDate, bh.Remark, bh.CreatedDate,
+                           i.ItemCode as ParentItemCode, i.CnName as ParentItemName,
+                           i.ItemType as ParentItemType, i.ItemSpec as ParentItemSpec
+                    FROM BomHeaders bh
+                    LEFT JOIN Items i ON bh.ParentItemId = i.ItemId
+                    ORDER BY bh.BomName, bh.Rev
+                """
+                results = query_all(sql)
+            
+            return [dict(row) for row in results]
         except Exception as e:
             raise Exception(f"获取BOM列表失败: {str(e)}")
     
@@ -27,7 +47,8 @@ class BomService:
         """根据ID获取BOM"""
         try:
             sql = """
-                SELECT bh.*, i.ItemCode as ParentItemCode, i.CnName as ParentItemName
+                SELECT bh.*, i.ItemCode as ParentItemCode, i.CnName as ParentItemName,
+                       i.ItemSpec as ParentItemSpec, i.Brand as ParentItemBrand
                 FROM BomHeaders bh
                 LEFT JOIN Items i ON bh.ParentItemId = i.ItemId
                 WHERE bh.BomId = ?
@@ -67,7 +88,8 @@ class BomService:
         try:
             sql = """
                 SELECT bl.*, i.ItemCode as ChildItemCode, i.CnName as ChildItemName,
-                       i.ItemType as ChildItemType
+                       i.ItemType as ChildItemType, i.ItemSpec as ChildItemSpec,
+                       i.Brand as ChildItemBrand
                 FROM BomLines bl
                 JOIN Items i ON bl.ChildItemId = i.ItemId
                 WHERE bl.BomId = ?
@@ -262,6 +284,7 @@ class BomService:
                     'ItemId': line['ChildItemId'],
                     'ItemCode': line['ChildItemCode'],
                     'ItemName': line['ChildItemName'],
+                    'ItemSpec': line['ChildItemSpec'],
                     'ItemType': line['ChildItemType'],
                     'QtyPer': line['QtyPer'],
                     'ActualQty': actual_qty,

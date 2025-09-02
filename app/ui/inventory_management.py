@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QGroupBox, QLineEdit, QComboBox, QMessageBox,
     QTabWidget, QHeaderView, QAbstractItemView, QFileDialog, QDialog,
-    QFormLayout, QDialogButtonBox, QTextEdit, QSpinBox, QSizePolicy
+    QFormLayout, QDialogButtonBox, QTextEdit, QSpinBox, QSizePolicy,
+    QProgressBar, QScrollArea
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor
@@ -12,6 +13,7 @@ from PySide6.QtGui import QFont, QColor
 from app.services.inventory_service import InventoryService
 from app.services.item_service import ItemService
 from app.services.warehouse_service import WarehouseService
+from app.services.inventory_import_service import InventoryImportService
 
 # -------- 数量/单价/安全库存输入对话框 --------
 class QtyPriceDialog(QDialog):
@@ -187,9 +189,7 @@ class InventoryManagement(QWidget):
         self.tab_daily = QWidget(); self._build_tab_daily(self.tab_daily)
         self.tabs.addTab(self.tab_daily, "日常登记")
 
-        # 现存登记
-        self.tab_settle = QWidget(); self._build_tab_settle(self.tab_settle)
-        self.tabs.addTab(self.tab_settle, "现存登记")
+
 
         # 库存流水
         self.tab_tx = QWidget(); self._build_tab_tx(self.tab_tx)
@@ -209,13 +209,20 @@ class InventoryManagement(QWidget):
         h.addStretch()
         btn_refresh = QPushButton("刷新"); btn_refresh.clicked.connect(self.reload_all); h.addWidget(btn_refresh)
         btn_export = QPushButton("导出余额CSV"); btn_export.clicked.connect(self.export_balance); h.addWidget(btn_export)
+        btn_import = QPushButton("库存导入"); btn_import.clicked.connect(self.open_import_dialog); h.addWidget(btn_import)
         btn_wh = QPushButton("仓库管理"); btn_wh.clicked.connect(self.open_wh_manager); h.addWidget(btn_wh)
         layout.addWidget(box)
 
         filt = QGroupBox("筛选"); fh = QHBoxLayout(filt)
         fh.addWidget(QLabel("物料关键词：")); self.ed_item_filter = QLineEdit(); self.ed_item_filter.setMaximumWidth(220); fh.addWidget(self.ed_item_filter)
-        fh.addWidget(QLabel("仓库：")); self.cb_wh = QComboBox(); self.cb_wh.setMinimumWidth(200); fh.addWidget(self.cb_wh)
-        fh.addStretch(); btn_find = QPushButton("查询"); btn_find.clicked.connect(self.load_balance); fh.addWidget(btn_find)
+        fh.addWidget(QLabel("仓库：")); self.cb_wh = QComboBox(); self.cb_wh.setMinimumWidth(150); fh.addWidget(self.cb_wh)
+        fh.addWidget(QLabel("物料类型：")); self.cb_item_type = QComboBox(); self.cb_item_type.setMinimumWidth(120); fh.addWidget(self.cb_item_type)
+        fh.addStretch()
+        
+        # 连接信号，实现自动更新
+        self.ed_item_filter.textChanged.connect(self.load_balance)
+        self.cb_wh.currentTextChanged.connect(self.load_balance)
+        self.cb_item_type.currentTextChanged.connect(self.load_balance)
         layout.addWidget(filt)
 
         self.tbl_balance = QTableWidget(0, 9)
@@ -244,10 +251,11 @@ class InventoryManagement(QWidget):
         layout.addWidget(self.tbl_balance)
 
     def load_balance(self):
-        # 获取当前选择的仓库
+        # 获取当前选择的仓库和物料类型
         cur_wh = self.cb_wh.currentText()
+        cur_item_type = self.cb_item_type.currentText()
         
-        # 只在第一次加载时初始化仓库下拉框
+        # 只在第一次加载时初始化下拉框
         if self.cb_wh.count() == 0:
             self.cb_wh.blockSignals(True)
             whs = InventoryService.get_warehouses() or ["默认仓库"]
@@ -256,28 +264,103 @@ class InventoryManagement(QWidget):
             # 默认选择"全部"
             self.cb_wh.setCurrentText("全部")
             cur_wh = "全部"
+        
+        if self.cb_item_type.count() == 0:
+            self.cb_item_type.blockSignals(True)
+            self.cb_item_type.addItem("全部")
+            self.cb_item_type.addItem("原材料")
+            self.cb_item_type.addItem("半成品")
+            self.cb_item_type.addItem("成品")
+            self.cb_item_type.addItem("包装")
+            self.cb_item_type.blockSignals(False)
+            # 默认选择"全部"
+            self.cb_item_type.setCurrentText("全部")
+            cur_item_type = "全部"
 
         kw = self.ed_item_filter.text().strip()
         
         # 获取库存余额记录
         if cur_wh == "全部":
-            # 全部仓库：按物料筛选
-            item_id = None
+            # 全部仓库：显示所有物料
             if kw:
+                # 如果有关键词，先搜索物料（模糊搜索：物料编码、物料名称、物料规格、商品品牌）
                 items = ItemService.search_items(kw)
                 if items:
-                    item_id = items[0]["ItemId"]
-            rows = InventoryService.get_inventory_balance(item_id=item_id)
+                    # 为每个搜索到的物料获取库存信息
+                    rows = []
+                    for item in items:
+                        # 物料类型筛选
+                        if cur_item_type != "全部":
+                            item_type_map = {"原材料": "RM", "半成品": "SFG", "成品": "FG", "包装": "PKG"}
+                            if item.get("ItemType") != item_type_map.get(cur_item_type):
+                                continue
+                        
+                        balances = InventoryService.get_inventory_balance(item_id=item["ItemId"])
+                        if balances:
+                            rows.extend(balances)
+                        else:
+                            # 没有库存记录，显示为0
+                            rows.append({
+                                "ItemId": item["ItemId"],
+                                "ItemCode": item["ItemCode"],
+                                "CnName": item.get("CnName", ""),
+                                "ItemType": item.get("ItemType", ""),
+                                "Unit": item.get("Unit", ""),
+                                "Warehouse": "",
+                                "Location": "",
+                                "QtyOnHand": 0,
+                                "SafetyStock": item.get("SafetyStock", 0)
+                            })
+                else:
+                    rows = []
+            else:
+                # 没有关键词，显示所有物料
+                all_items = ItemService.get_all_items()
+                rows = []
+                for item in all_items:
+                    # 物料类型筛选
+                    if cur_item_type != "全部":
+                        item_type_map = {"原材料": "RM", "半成品": "SFG", "成品": "FG", "包装": "PKG"}
+                        if item.get("ItemType") != item_type_map.get(cur_item_type):
+                            continue
+                    
+                    balances = InventoryService.get_inventory_balance(item_id=item["ItemId"])
+                    if balances:
+                        rows.extend(balances)
+                    else:
+                        # 没有库存记录，显示为0
+                        rows.append({
+                            "ItemId": item["ItemId"],
+                            "ItemCode": item["ItemCode"],
+                            "CnName": item.get("CnName", ""),
+                            "ItemType": item.get("ItemType", ""),
+                            "Unit": item.get("Unit", ""),
+                            "Warehouse": "",
+                            "Location": "",
+                            "QtyOnHand": 0,
+                            "SafetyStock": item.get("SafetyStock", 0)
+                        })
         else:
             # 指定仓库：显示该仓库下的所有物料
             rows = InventoryService.get_inventory_balance(warehouse=cur_wh)
             
-            # 如果指定了物料关键词，进一步筛选
+            # 物料类型筛选
+            if cur_item_type != "全部":
+                item_type_map = {"原材料": "RM", "半成品": "SFG", "成品": "FG", "包装": "PKG"}
+                filtered_rows = []
+                for row in rows:
+                    if row.get("ItemType") == item_type_map.get(cur_item_type):
+                        filtered_rows.append(row)
+                rows = filtered_rows
+            
+            # 如果指定了物料关键词，进一步筛选（模糊搜索：物料编码、物料名称、物料规格、商品品牌）
             if kw:
                 filtered_rows = []
                 for row in rows:
                     if (kw.lower() in row["ItemCode"].lower() or 
-                        kw.lower() in (row.get("CnName", "") or "").lower()):
+                        kw.lower() in (row.get("CnName", "") or "").lower() or
+                        kw.lower() in (row.get("ItemSpec", "") or "").lower() or
+                        kw.lower() in (row.get("Brand", "") or "").lower()):
                         filtered_rows.append(row)
                 rows = filtered_rows
             
@@ -288,19 +371,25 @@ class InventoryManagement(QWidget):
                     real_qty = InventoryService.get_onhand(row["ItemId"], cur_wh, row.get("Location"))
                     row["QtyOnHand"] = real_qty
         
-        # 对数据进行排序：低于安全库存的排在前面
+        # 对数据进行排序：低于安全库存的标红最上面，然后优先展示有库存的，最后是库存为0的
         def sort_key(row):
             qty = int(row.get("QtyOnHand") or 0)
             safety_stock = int(row.get("SafetyStock") or 0)
-            # 如果安全库存为0，则不算作低库存
-            if safety_stock == 0:
-                return (False, row["ItemCode"])  # 正常库存，按编码排序
-            # 低于安全库存的排在前面
-            is_low_stock = qty < safety_stock
-            return (is_low_stock, row["ItemCode"])  # 低库存优先，然后按编码排序
+            
+            # 第一优先级：低于安全库存的（标红最上面）
+            if safety_stock > 0 and qty < safety_stock:
+                return (0, row["ItemCode"])  # 最低值，排在最前面
+            
+            # 第二优先级：有库存的（qty > 0）
+            elif qty > 0:
+                return (1, row["ItemCode"])
+            
+            # 第三优先级：库存为0的
+            else:
+                return (2, row["ItemCode"])
         
-        # 按排序键排序，低库存在前
-        rows.sort(key=sort_key, reverse=True)
+        # 按排序键排序
+        rows.sort(key=sort_key)
         
         self.tbl_balance.setRowCount(len(rows))
         for r, it in enumerate(rows):
@@ -680,19 +769,25 @@ class InventoryManagement(QWidget):
 
     def _render_daily_table(self, rows):
         """渲染日常登记表格"""
-        # 对数据进行排序：低于安全库存的排在前面
+        # 对数据进行排序：低于安全库存的标红最上面，然后优先展示有库存的，最后是库存为0的
         def sort_key(row):
             qty = int(row.get("QtyOnHand") or 0)
             safety_stock = int(row.get("SafetyStock") or 0)
-            # 如果安全库存为0，则不算作低库存
-            if safety_stock == 0:
-                return (False, row["ItemCode"])  # 正常库存，按编码排序
-            # 低于安全库存的排在前面
-            is_low_stock = qty < safety_stock
-            return (is_low_stock, row["ItemCode"])  # 低库存优先，然后按编码排序
+            
+            # 第一优先级：低于安全库存的（标红最上面）
+            if safety_stock > 0 and qty < safety_stock:
+                return (0, row["ItemCode"])  # 最低值，排在最前面
+            
+            # 第二优先级：有库存的（qty > 0）
+            elif qty > 0:
+                return (1, row["ItemCode"])
+            
+            # 第三优先级：库存为0的
+            else:
+                return (2, row["ItemCode"])
         
-        # 按排序键排序，低库存在前
-        rows.sort(key=sort_key, reverse=True)
+        # 按排序键排序
+        rows.sort(key=sort_key)
         
         self.tbl_daily.setRowCount(len(rows))
         for r, row_data in enumerate(rows):
@@ -746,75 +841,33 @@ class InventoryManagement(QWidget):
         # 重新加载完整数据
         self.daily_load_list()
 
-    # ---------- 现存登记 ----------
-    def _build_tab_settle(self, w: QWidget):
-        layout = QVBoxLayout(w)
-        frm = QGroupBox("登记现有库存"); f = QFormLayout(frm)
 
-        self.lb_settle_item = QLabel("-")
-        self.btn_settle_pick = QPushButton("选择物料")
-        self.btn_settle_pick.clicked.connect(self.settle_pick_item)
-        h1 = QHBoxLayout(); h1.addWidget(self.lb_settle_item); h1.addStretch(); h1.addWidget(self.btn_settle_pick)
-        f.addRow(QLabel("物料："), self._wrap(h1))
 
-        self.cb_settle_wh = QComboBox(); f.addRow("仓库：", self.cb_settle_wh)
-        self.ed_settle_loc = QLineEdit(); f.addRow("库位：", self.ed_settle_loc)
 
-        self.lb_onhand = QLabel("0"); self.btn_load_onhand = QPushButton("读取当前"); self.btn_load_onhand.clicked.connect(self.load_settle_onhand)
-        h2 = QHBoxLayout(); h2.addWidget(self.lb_onhand); h2.addStretch(); h2.addWidget(self.btn_load_onhand)
-        f.addRow(QLabel("当前在手："), self._wrap(h2))
-
-        self.ed_target = QLineEdit("0"); f.addRow("登记为：", self.ed_target)
-
-        self.btn_do_settle = QPushButton("登记为现存（自动生成调整）")
-        self.btn_do_settle.clicked.connect(self.commit_settle)
-        f.addRow("", self.btn_do_settle)
-
-        layout.addWidget(frm)
-        tip = QLabel("说明：把在手量直接登记为目标值，系统自动生成 ADJ 差异，适合期初/复核。")
-        tip.setStyleSheet("color:#666;"); layout.addWidget(tip)
-        self._settle_item = None
-
-    def _wrap(self, lay): w = QWidget(); w.setLayout(lay); return w
-
-    def settle_pick_item(self):
-        dlg = ItemPickerDialog(self)
-        if dlg.exec() == QDialog.Accepted:
-            it = dlg.get_selected()
-            if not it: return
-            self._settle_item = it
-            self.lb_settle_item.setText(f"{it['ItemCode']}  {it.get('CnName','')}")
-            self.load_settle_onhand()
-
-    def load_settle_onhand(self):
-        self.cb_settle_wh.clear()
-        for w in InventoryService.get_warehouses(): self.cb_settle_wh.addItem(w)
-        if not self._settle_item: return
-        wh = self.cb_settle_wh.currentText() or "默认仓库"
-        loc = self.ed_settle_loc.text().strip() or None
-        onhand = InventoryService.get_onhand(self._settle_item["ItemId"], wh, loc)
-        self.lb_onhand.setText(str(int(onhand)))
-
-    def commit_settle(self):
-        if not self._settle_item:
-            QMessageBox.information(self,"提示","请先选择物料"); return
-        wh = self.cb_settle_wh.currentText() or "默认仓库"
-        loc = self.ed_settle_loc.text().strip() or None
-        try:
-            target = float(self.ed_target.text() or 0)
-        except: target = 0
-        diff = InventoryService.set_onhand(self._settle_item["ItemId"], wh, target, loc)
-        QMessageBox.information(self, "完成", f"已登记为 {target}（差异 {diff:+}）")
 
     # ---------- 库存流水 ----------
     def _build_tab_tx(self, w: QWidget):
         layout = QVBoxLayout(w)
+        
+        # 筛选区域
         filt = QGroupBox("筛选"); h = QHBoxLayout(filt)
-        h.addWidget(QLabel("关键词：")); self.ed_tx_kw = QLineEdit(); h.addWidget(self.ed_tx_kw)
+        h.addWidget(QLabel("关键词：")); self.ed_tx_kw = QLineEdit(); self.ed_tx_kw.setPlaceholderText("搜索物料编码、名称、规格"); h.addWidget(self.ed_tx_kw)
         h.addWidget(QLabel("仓库：")); self.cb_tx_wh = QComboBox(); h.addWidget(self.cb_tx_wh)
         h.addStretch()
-        btn_q = QPushButton("查询"); btn_q.clicked.connect(self.load_tx); h.addWidget(btn_q)
+        
+        # 连接信号，实现自动更新
+        self.ed_tx_kw.textChanged.connect(self.load_tx)
+        self.cb_tx_wh.currentTextChanged.connect(self.load_tx)
+        
         layout.addWidget(filt)
+        
+        # 操作按钮区域
+        btn_group = QGroupBox("操作"); btn_layout = QHBoxLayout(btn_group)
+        btn_refresh = QPushButton("刷新"); btn_refresh.clicked.connect(self.load_tx); btn_layout.addWidget(btn_refresh)
+        btn_export = QPushButton("导出流水"); btn_export.clicked.connect(self.export_transactions); btn_layout.addWidget(btn_export)
+        btn_clear = QPushButton("清空流水"); btn_clear.clicked.connect(self.clear_transactions); btn_layout.addWidget(btn_clear)
+        btn_layout.addStretch()
+        layout.addWidget(btn_group)
 
         self.tbl_tx = QTableWidget(0, 9)
         self.tbl_tx.setHorizontalHeaderLabels(["日期","类型","仓库","库位","物料编码","物料名称","数量","单价","备注"])
@@ -839,17 +892,38 @@ class InventoryManagement(QWidget):
         layout.addWidget(self.tbl_tx)
 
     def load_tx(self):
-        self.cb_tx_wh.clear()
-        self.cb_tx_wh.addItem("全部")
-        for w in InventoryService.get_warehouses(): self.cb_tx_wh.addItem(w)
+        # 初始化仓库下拉框（只在第一次加载时）
+        if self.cb_tx_wh.count() == 0:
+            self.cb_tx_wh.blockSignals(True)
+            self.cb_tx_wh.addItem("全部")
+            for w in InventoryService.get_warehouses(): 
+                self.cb_tx_wh.addItem(w)
+            self.cb_tx_wh.blockSignals(False)
+            # 默认选择"全部"
+            self.cb_tx_wh.setCurrentText("全部")
+        
         kw = self.ed_tx_kw.text().strip()
-        item_id = None
-        if kw:
-            items = ItemService.search_items(kw)
-            # 移除物料类型筛选，显示所有类型的物料
-            if items: item_id = items[0]["ItemId"]
         wh = None if self.cb_tx_wh.currentText()=="全部" else self.cb_tx_wh.currentText()
-        rows = InventoryService.list_transactions(item_id=item_id, warehouse=wh)
+        
+        # 获取交易记录
+        if kw:
+            # 如果有关键词，先搜索物料（模糊搜索：物料编码、物料名称、物料规格、商品品牌）
+            items = ItemService.search_items(kw)
+            if items:
+                # 为每个搜索到的物料获取交易记录
+                rows = []
+                for item in items:
+                    item_transactions = InventoryService.list_transactions(item_id=item["ItemId"], warehouse=wh)
+                    rows.extend(item_transactions)
+            else:
+                rows = []
+        else:
+            # 没有关键词，获取所有交易记录（包括所有物料类型）
+            rows = InventoryService.list_transactions(warehouse=wh, item_types=["RM", "SFG", "FG", "PKG"])
+        
+        # 按日期倒序排列（最新的在前面）
+        rows.sort(key=lambda x: x.get("TxDate", ""), reverse=True)
+        
         self.tbl_tx.setRowCount(len(rows))
         for r, t in enumerate(rows):
             self.tbl_tx.setItem(r, 0, QTableWidgetItem(t.get("TxDate","")))
@@ -861,12 +935,72 @@ class InventoryManagement(QWidget):
             self.tbl_tx.setItem(r, 6, QTableWidgetItem(str(t.get("Qty") or 0)))
             self.tbl_tx.setItem(r, 7, QTableWidgetItem("" if t.get("UnitCost") is None else str(t.get("UnitCost"))))
             self.tbl_tx.setItem(r, 8, QTableWidgetItem(t.get("Remark","") or ""))
+    
+    def export_transactions(self):
+        """导出库存流水"""
+        path, _ = QFileDialog.getSaveFileName(self, "导出库存流水", "库存流水.csv", "CSV Files (*.csv)")
+        if not path:
+            return
+        
+        try:
+            import csv
+            rows = []
+            for r in range(self.tbl_tx.rowCount()):
+                rows.append([
+                    self.tbl_tx.item(r, 0).text(),  # 日期
+                    self.tbl_tx.item(r, 1).text(),  # 类型
+                    self.tbl_tx.item(r, 2).text(),  # 仓库
+                    self.tbl_tx.item(r, 3).text(),  # 库位
+                    self.tbl_tx.item(r, 4).text(),  # 物料编码
+                    self.tbl_tx.item(r, 5).text(),  # 物料名称
+                    self.tbl_tx.item(r, 6).text(),  # 数量
+                    self.tbl_tx.item(r, 7).text(),  # 单价
+                    self.tbl_tx.item(r, 8).text(),  # 备注
+                ])
+            
+            with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(["日期", "类型", "仓库", "库位", "物料编码", "物料名称", "数量", "单价", "备注"])
+                writer.writerows(rows)
+            
+            QMessageBox.information(self, "导出完成", f"库存流水已导出到：{path}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "导出失败", f"导出库存流水时发生错误：{str(e)}")
+    
+    def clear_transactions(self):
+        """清空库存流水"""
+        # 确认清空操作
+        reply = QMessageBox.question(
+            self, 
+            "确认清空", 
+            "确定要清空所有库存流水记录吗？\n\n"
+            "此操作将删除所有库存交易记录，且无法恢复！\n"
+            "建议在清空前先导出备份。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        try:
+            # 执行清空操作
+            from app.db import execute
+            execute("DELETE FROM InventoryTx")
+            
+            QMessageBox.information(self, "清空完成", "所有库存流水记录已清空")
+            
+            # 刷新显示
+            self.load_tx()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "清空失败", f"清空库存流水时发生错误：{str(e)}")
 
     # ---------- 工具 ----------
     def reload_all(self):
         self.load_balance()
         self.daily_load_list()
-        self.load_settle_onhand()
         self.load_tx()
 
     def edit_safety_stock(self, row_data):
@@ -908,11 +1042,316 @@ class InventoryManagement(QWidget):
             writer = csv.writer(f); writer.writerow(["物料编码","物料名称","类型","单位","仓库","库位","在手数量","安全库存"]); writer.writerows(rows)
         QMessageBox.information(self, "导出完成", path)
 
+    # ---------- 库存导入对话框入口 ----------
+    def open_import_dialog(self):
+        """打开库存导入对话框"""
+        dlg = InventoryImportDialog(self)
+        if dlg.exec() == QDialog.Accepted:
+            # 导入完成后刷新数据
+            self.reload_all()
+
     # ---------- 仓库管理入口 ----------
     def open_wh_manager(self):
         dlg = WarehouseManagerDialog(self)
         dlg.exec()
         self.reload_all()
+
+# -------- 库存导入对话框 --------
+class InventoryImportDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("库存导入")
+        self.resize(600, 400)
+        
+        layout = QVBoxLayout(self)
+        
+        # 导入说明
+        info_group = QGroupBox("导入说明")
+        info_layout = QVBoxLayout(info_group)
+        info_text = QTextEdit()
+        info_text.setMaximumHeight(100)
+        info_text.setPlainText("""Excel文件格式要求：
+1. 第一行为标题行
+2. 必须包含以下列：
+   - 物料代码：必须包含此列
+   - 规格型号（可选）：此列可以有也可以没有
+   - 基本单位数量：数量列，重复物资自动累计计算
+
+列识别规则：
+- 系统会精确匹配列名："物料代码"、"规格型号"、"基本单位数量"
+- 即使表格有很多列，也能准确找到需要的列
+- 规格型号列是可选的，如果没有则跳过
+
+匹配规则：
+- 编码匹配：去掉空格、连接符（-、_、.等）后进行匹配
+- 规格匹配：如果有规格列，则规格也必须匹配
+- 系统会自动跳过最后一行合计行
+
+重复物资处理：
+- 自动识别重复的物料代码和规格
+- 将相同物料的数量进行累计计算
+- 导入后会显示累计计算的详细信息""")
+        info_text.setReadOnly(True)
+        info_layout.addWidget(info_text)
+        layout.addWidget(info_group)
+        
+        # 导入操作
+        import_group = QGroupBox("导入操作")
+        import_layout = QVBoxLayout(import_group)
+        
+        # 第一行：仓库选择
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("目标仓库："))
+        self.cb_import_wh = QComboBox()
+        self.cb_import_wh.setMinimumWidth(200)
+        row1.addWidget(self.cb_import_wh)
+        row1.addStretch()
+        import_layout.addLayout(row1)
+        
+        # 第二行：文件选择
+        row2 = QHBoxLayout()
+        row2.addWidget(QLabel("Excel文件："))
+        self.ed_import_file = QLineEdit()
+        self.ed_import_file.setPlaceholderText("请选择Excel文件")
+        self.ed_import_file.setReadOnly(True)
+        row2.addWidget(self.ed_import_file)
+        
+        self.btn_import_browse = QPushButton("浏览")
+        self.btn_import_browse.clicked.connect(self.browse_file)
+        row2.addWidget(self.btn_import_browse)
+        row2.addStretch()
+        import_layout.addLayout(row2)
+        
+        # 第三行：导入按钮
+        row3 = QHBoxLayout()
+        self.btn_import_start = QPushButton("开始导入")
+        self.btn_import_start.clicked.connect(self.start_import)
+        self.btn_import_start.setEnabled(False)
+        row3.addWidget(self.btn_import_start)
+        
+        self.progress_import = QProgressBar()
+        self.progress_import.setVisible(False)
+        row3.addWidget(self.progress_import)
+        
+        row3.addStretch()
+        import_layout.addLayout(row3)
+        
+        layout.addWidget(import_group)
+        
+        # 按钮
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_close = QPushButton("关闭")
+        btn_close.clicked.connect(self.reject)
+        btn_layout.addWidget(btn_close)
+        layout.addLayout(btn_layout)
+        
+        # 初始化仓库下拉框
+        self.init_warehouse_combo()
+    
+    def init_warehouse_combo(self):
+        """初始化仓库下拉框"""
+        self.cb_import_wh.clear()
+        warehouses = InventoryService.get_warehouses()
+        for wh in warehouses:
+            self.cb_import_wh.addItem(wh)
+        if warehouses:
+            self.cb_import_wh.setCurrentText(warehouses[0])
+    
+    def browse_file(self):
+        """浏览选择Excel文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 
+            "选择Excel文件", 
+            "", 
+            "Excel Files (*.xlsx *.xls);;All Files (*)"
+        )
+        if file_path:
+            self.ed_import_file.setText(file_path)
+            self.btn_import_start.setEnabled(True)
+    
+    def start_import(self):
+        """开始导入"""
+        file_path = self.ed_import_file.text().strip()
+        if not file_path:
+            QMessageBox.warning(self, "提示", "请先选择Excel文件")
+            return
+        
+        warehouse = self.cb_import_wh.currentText()
+        if not warehouse:
+            QMessageBox.warning(self, "提示", "请选择目标仓库")
+            return
+        
+        # 确认导入
+        reply = QMessageBox.question(
+            self, 
+            "确认导入", 
+            f"确定要导入库存数据到仓库 '{warehouse}' 吗？\n"
+            f"文件：{file_path}\n\n"
+            f"导入将更新匹配物料的库存数量。",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        try:
+            # 显示进度条
+            self.progress_import.setVisible(True)
+            self.progress_import.setRange(0, 0)  # 不确定进度
+            
+            # 执行导入
+            success, message, results, duplicate_items = InventoryImportService.import_inventory_from_excel(file_path, warehouse)
+            
+            # 隐藏进度条
+            self.progress_import.setVisible(False)
+            
+            # 显示结果
+            if success:
+                # 如果有累计计算的物资，显示详细提示
+                if duplicate_items:
+                    # 构建累计物资的提示信息
+                    duplicate_info = "发现重复物资，已进行累计计算：\n\n"
+                    for i, item in enumerate(duplicate_items, 1):
+                        duplicate_info += f"{i}. 物料编码：{item['item_code']}\n"
+                        if item['item_spec']:
+                            duplicate_info += f"   规格型号：{item['item_spec']}\n"
+                        duplicate_info += f"   涉及行数：{len(item['rows'])}行\n"
+                        duplicate_info += f"   各行数量：{', '.join(map(str, item['individual_qtys']))}\n"
+                        duplicate_info += f"   累计总数：{item['total_qty']}\n\n"
+                    
+                    # 显示累计信息对话框
+                    QMessageBox.information(self, "累计计算信息", duplicate_info)
+                
+                QMessageBox.information(self, "导入完成", message)
+                
+                # 显示详细结果对话框
+                if results:
+                    dlg = ImportResultDialog(self, results)
+                    dlg.exec()
+                
+                # 关闭导入对话框
+                self.accept()
+            else:
+                QMessageBox.critical(self, "导入失败", message)
+                
+        except Exception as e:
+            self.progress_import.setVisible(False)
+            QMessageBox.critical(self, "导入错误", f"导入过程中发生错误：{str(e)}")
+
+# -------- 导入结果对话框 --------
+class ImportResultDialog(QDialog):
+    def __init__(self, parent=None, results=None):
+        super().__init__(parent)
+        self.setWindowTitle("导入结果")
+        self.resize(800, 600)
+        self.results = results or []
+        
+        layout = QVBoxLayout(self)
+        
+        # 统计信息
+        success_count = len([r for r in self.results if r.get("status") == "成功"])
+        error_count = len([r for r in self.results if r.get("status") == "失败"])
+        
+        stats_label = QLabel(f"导入结果：成功 {success_count} 条，失败 {error_count} 条")
+        stats_label.setFont(QFont("Arial", 12, QFont.Bold))
+        layout.addWidget(stats_label)
+        
+        # 详细结果表格
+        self.result_table = QTableWidget(0, 8)
+        self.result_table.setHorizontalHeaderLabels(["物料代码", "规格型号", "数量", "状态", "匹配物料", "消息", "涉及行数", "累计计算"])
+        header = self.result_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 物料代码
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # 规格型号
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 数量
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 状态
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 匹配物料
+        header.setSectionResizeMode(5, QHeaderView.Stretch)  # 消息
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 涉及行数
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # 累计计算
+        
+        layout.addWidget(self.result_table)
+        
+        # 按钮
+        btn_layout = QHBoxLayout()
+        btn_export = QPushButton("导出结果")
+        btn_export.clicked.connect(self.export_results)
+        btn_layout.addWidget(btn_export)
+        
+        btn_layout.addStretch()
+        btn_close = QPushButton("关闭")
+        btn_close.clicked.connect(self.accept)
+        btn_layout.addWidget(btn_close)
+        
+        layout.addLayout(btn_layout)
+        
+        self.load_results()
+    
+    def load_results(self):
+        """加载导入结果到表格"""
+        self.result_table.setRowCount(len(self.results))
+        
+        for r, result in enumerate(self.results):
+            # 物料代码
+            self.result_table.setItem(r, 0, QTableWidgetItem(str(result.get("item_code", ""))))
+            
+            # 规格型号
+            self.result_table.setItem(r, 1, QTableWidgetItem(str(result.get("item_spec", ""))))
+            
+            # 数量
+            self.result_table.setItem(r, 2, QTableWidgetItem(str(result.get("qty", ""))))
+            
+            # 状态
+            status_item = QTableWidgetItem(result.get("status", ""))
+            if result.get("status") == "成功":
+                status_item.setBackground(QColor(200, 255, 200))  # 绿色背景
+            else:
+                status_item.setBackground(QColor(255, 200, 200))  # 红色背景
+            self.result_table.setItem(r, 3, status_item)
+            
+            # 匹配物料
+            matched_item = QTableWidgetItem(result.get("matched_item", ""))
+            self.result_table.setItem(r, 4, matched_item)
+            
+            # 消息
+            self.result_table.setItem(r, 5, QTableWidgetItem(result.get("message", "")))
+            
+            # 涉及行数
+            rows = result.get("rows", [])
+            rows_text = f"{len(rows)}行" if len(rows) > 1 else "1行"
+            self.result_table.setItem(r, 6, QTableWidgetItem(rows_text))
+            
+            # 累计计算
+            is_accumulated = result.get("is_accumulated", False)
+            accumulated_text = "是" if is_accumulated else "否"
+            accumulated_item = QTableWidgetItem(accumulated_text)
+            if is_accumulated:
+                accumulated_item.setBackground(QColor(255, 255, 200))  # 黄色背景
+            self.result_table.setItem(r, 7, accumulated_item)
+    
+    def export_results(self):
+        """导出导入结果到CSV文件"""
+        path, _ = QFileDialog.getSaveFileName(self, "导出导入结果", "导入结果.csv", "CSV Files (*.csv)")
+        if not path:
+            return
+        
+        import csv
+        with open(path, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.writer(f)
+            writer.writerow(["行号", "物料代码", "规格型号", "数量", "状态", "匹配物料", "消息"])
+            for result in self.results:
+                writer.writerow([
+                    result.get("row", ""),
+                    result.get("item_code", ""),
+                    result.get("item_spec", ""),
+                    result.get("qty", ""),
+                    result.get("status", ""),
+                    result.get("matched_item", ""),
+                    result.get("message", "")
+                ])
+        
+        QMessageBox.information(self, "导出完成", f"结果已导出到：{path}")
 
 # -------- 仓库管理对话框（CRUD + 维护仓库物料）--------
 class WarehouseManagerDialog(QDialog):

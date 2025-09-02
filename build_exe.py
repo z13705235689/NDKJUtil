@@ -21,6 +21,13 @@ def check_dependencies():
         subprocess.run([sys.executable, "-m", "pip", "install", "PySide6"], check=True)
     
     try:
+        import pandas
+        print("✅ pandas 已安装")
+    except ImportError:
+        print("❌ pandas 未安装，正在安装...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "pandas"], check=True)
+    
+    try:
         import pyinstaller
         print("✅ PyInstaller 已安装")
     except ImportError:
@@ -31,9 +38,7 @@ def check_files():
     """检查必要的文件是否存在"""
     required_files = [
         "app/ui/ui_main.py",
-        "mes.db",
-        "app/schema.sql",
-        "bom.csv"
+        "app/schema.sql"
     ]
     
     missing_files = []
@@ -71,15 +76,15 @@ def build_exe():
         "--onefile",                    # 打包成单个文件
         "--windowed",                   # 无控制台窗口
         "--name=NDKJ_MES",              # 可执行文件名
-        "--add-data=mes.db;.",          # 数据库文件
         "--add-data=app/schema.sql;app", # SQL文件
-        "--add-data=bom.csv;.",         # BOM数据文件
         # 隐藏导入
         "--hidden-import=PySide6",
         "--hidden-import=sqlite3",
+        "--hidden-import=pandas",
         "--hidden-import=app.services.bom_service",
         "--hidden-import=app.services.customer_order_service",
         "--hidden-import=app.services.inventory_service",
+        "--hidden-import=app.services.inventory_import_service",
         "--hidden-import=app.services.item_service",
         "--hidden-import=app.services.mrp_service",
         "--hidden-import=app.services.warehouse_service",
