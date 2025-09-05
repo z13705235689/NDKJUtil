@@ -3467,7 +3467,7 @@ class BomImportDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("BOM矩阵导入")
+        self.setWindowTitle("BOM矩阵导入 - 智能同步更新")
         self.resize(600, 500)
         self.setMinimumSize(550, 450)
         self.setMaximumSize(800, 600)
@@ -3481,7 +3481,7 @@ class BomImportDialog(QDialog):
         layout.setSpacing(15)
 
         # 标题
-        title_label = QLabel("BOM矩阵导入 - 从Excel矩阵文件导入BOM结构")
+        title_label = QLabel("BOM矩阵导入 - 智能同步更新BOM结构")
         title_label.setStyleSheet("""
             QLabel {
                 font-size: 18px;
@@ -3587,7 +3587,7 @@ class BomImportDialog(QDialog):
         format_content = """
 文件格式要求（支持CSV和Excel格式）：
 
-Excel表格格式示例（带行列标题）：
+Excel表格格式示例（矩阵格式）：
 
     A                           B                 C                 D                  E
 1                             型号A           型号B          型号C           型号D
@@ -3600,19 +3600,31 @@ Excel表格格式示例（带行列标题）：
 数据说明：
 • A列：零部件规格（第3行开始）
 • B-E列：成品品牌和规格（第1-2行）
-• 第1行：成品商品品牌
+• 第1行：成品商品品牌（用于BOM名称匹配）
 • 第2行：成品规格型号
 • 第3行开始：零部件规格 + 用量数据
 
 导入规则说明：
-1. A1、A2单元格必须为空
-2. B1-E1填写成品品牌
-3. B2-E2填写成品规格
+1. A1、A2单元格必须为空（保留空白）
+2. B1-E1填写成品品牌（作为BOM名称的关键字段）
+3. B2-E2填写成品规格型号
 4. A3-A6填写零部件规格
 5. B3-E6填写用量数据
-6. 数量为0表示不使用该零部件
-7. 系统会自动匹配成品和零部件物料
+6. 数量为0表示不使用该零部件（会从BOM中移除）
+7. 系统会自动匹配成品和零部件物料（基于品牌和规格）
 8. 支持的文件格式：.csv, .xlsx, .xls
+
+智能匹配规则：
+• 成品匹配：优先使用品牌字段匹配BOM名称，其次使用其他产品信息
+• 零部件匹配：主要基于编码和规格匹配，名称作为辅助参考
+• 数据同步：支持增量更新，只更新有变化的BOM关系
+• 自动清理：数量为0的零部件会自动从BOM结构中移除
+• 新增支持：Excel中新增的零部件会自动添加到BOM中
+
+注意事项：
+• 只处理启用状态的物料，禁用的物料会被自动过滤
+• 导入前建议先导出现有BOM作为备份
+• 支持BOM历史记录，所有操作都会被记录
         """
         format_text.setPlainText(format_content)
         format_layout.addWidget(format_text)

@@ -1467,7 +1467,7 @@ class InventoryManagement(QWidget):
 class InventoryImportDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("库存导入")
+        self.setWindowTitle("库存导入 - 智能同步更新")
         self.resize(600, 400)
         
         layout = QVBoxLayout(self)
@@ -1499,10 +1499,11 @@ class InventoryImportDialog(QDialog):
 - 规格型号列是可选的，如果没有则跳过
 - 系统会自动检测CSV文件编码，支持多种中文编码格式
 
-匹配规则：
+智能匹配规则：
 - 编码匹配：去掉空格、连接符（-、_、.等）后进行匹配
 - 规格匹配：如果有规格列，则规格也必须匹配
 - 系统会自动跳过最后一行合计行
+- 只处理启用状态的物料，禁用物料会被自动过滤
 
 重复物资处理：
 - 自动识别重复的物料代码和规格
@@ -1512,7 +1513,19 @@ class InventoryImportDialog(QDialog):
 自动关联功能：
 - 导入时会自动将物料关联到选择的仓库
 - 无需手动在仓库管理中建立关联关系
-- 确保物料在仓库管理中可见""")
+- 确保物料在仓库管理中可见
+
+数据安全特性：
+- 自动过滤禁用物料，确保数据一致性
+- 支持增量更新，只更新有变化的库存数量
+- 自动清理禁用物料的仓库关联和库存记录
+- 提供详细的导入结果和错误信息
+
+注意事项：
+- 禁用的物料不会出现在库存列表中
+- 如果物料被禁用，系统会自动从仓库中移除
+- 建议导入前先导出现有库存作为备份
+- 所有库存变动都会记录详细的操作历史""")
         info_text.setReadOnly(True)
         info_layout.addWidget(info_text)
         layout.addWidget(info_group)
@@ -1611,8 +1624,11 @@ class InventoryImportDialog(QDialog):
             f"确定要导入库存数据到仓库 '{warehouse}' 吗？\n"
             f"文件：{file_path}\n\n"
             f"导入将：\n"
-            f"• 更新匹配物料的库存数量\n"
-            f"• 自动将物料关联到仓库 '{warehouse}'",
+            f"• 更新匹配物料的库存数量（只处理启用状态的物料）\n"
+            f"• 自动将物料关联到仓库 '{warehouse}'\n"
+            f"• 自动过滤禁用物料，确保数据一致性\n"
+            f"• 支持重复物资的累计计算\n"
+            f"• 记录详细的操作历史",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )

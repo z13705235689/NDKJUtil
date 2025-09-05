@@ -3,16 +3,84 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
     QTableWidgetItem, QDateEdit, QLabel, QComboBox, QGroupBox,
     QMessageBox, QHeaderView, QTabWidget, QLineEdit, QCheckBox,
-    QFileDialog, QProgressBar
+    QFileDialog, QProgressBar, QAbstractItemView, QAbstractScrollArea,
+    QSizePolicy
 )
-from PySide6.QtCore import Qt, QDate, QThread, Signal, QTimer
-from PySide6.QtGui import QFont, QColor, QBrush
+from PySide6.QtCore import Qt, QDate, QThread, Signal, QTimer, QRect
+from PySide6.QtGui import QFont, QColor, QBrush, QPainter
 
 from app.services.mrp_service import MRPService
 from typing import Optional
 import openpyxl
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+
+
+# -------------------- 两行表头 --------------------
+class TwoRowHeader(QHeaderView):
+    def __init__(self, orientation, parent=None):
+        super().__init__(orientation, parent)
+        self.setDefaultAlignment(Qt.AlignCenter)
+        self._top_font = QFont(); self._top_font.setBold(True)
+        self._bottom_font = QFont()
+        self._bottom_font.setPointSize(self._bottom_font.pointSize() - 1.5)  # 日期字体更小
+        self._bottom_font.setBold(True)  # 日期字体加粗
+        h = self.fontMetrics().height()
+        self.setFixedHeight(int(h * 3.0))  # 进一步增加高度
+
+    def sizeHint(self):
+        s = super().sizeHint()
+        h = self.fontMetrics().height()
+        s.setHeight(int(h * 3.0))  # 与setFixedHeight保持一致
+        return s
+
+    def paintSection(self, painter: QPainter, rect: QRect, logicalIndex: int):
+        if not rect.isValid():
+            return
+        
+        # 完全自定义绘制，不使用父类方法
+        painter.save()
+        
+        # 绘制背景
+        painter.fillRect(rect, QColor("#fafafa"))
+        
+        # 绘制边框
+        painter.setPen(QColor("#d9d9d9"))
+        painter.drawRect(rect)
+        
+        table = self.parent()
+        item = table.horizontalHeaderItem(logicalIndex) if table else None
+        top = item.text() if item else ""
+        bottom = item.data(Qt.UserRole) if (item and item.data(Qt.UserRole) is not None) else ""
+
+        # 计算两行的矩形区域
+        top_height = rect.height() // 2
+        bottom_height = rect.height() - top_height
+        
+        # 绘制第一行（CW编号）
+        painter.setPen(QColor("#333333"))
+        painter.setFont(self._top_font)
+        topRect = QRect(rect.left() + 1, rect.top() + 1, rect.width() - 2, top_height - 2)
+        painter.drawText(topRect, Qt.AlignCenter, str(top))
+        
+        # 绘制第二行（日期）
+        if bottom:  # 只有当有日期数据时才绘制
+            painter.setFont(self._bottom_font)
+            painter.setPen(QColor("#666666"))  # 使用稍浅的颜色
+            
+            # 为日期预留更多边距，确保不超出边界
+            margin = 1  # 增加边距
+            bottomRect = QRect(
+                rect.left() + margin, 
+                rect.top() + top_height, 
+                rect.width() - margin * 2, 
+                bottom_height - margin
+            )
+            
+            # 使用Qt.TextWrapAnywhere确保文本不会超出边界
+            painter.drawText(bottomRect, Qt.AlignCenter | Qt.TextWrapAnywhere, str(bottom))
+        
+        painter.restore()
 
 class MRPCalcThread(QThread):
     finished = Signal(dict)
@@ -302,9 +370,21 @@ class MRPViewer(QWidget):
         self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl.setSelectionMode(QTableWidget.NoSelection)
+        
+        # 使用自定义的两行表头
+        self.tbl.setHorizontalHeader(TwoRowHeader(Qt.Horizontal, self.tbl))
         hdr = self.tbl.horizontalHeader()
+        hdr.setFixedHeight(int(self.fontMetrics().height()*3.0))  # 与TwoRowHeader保持一致
         hdr.setSectionResizeMode(QHeaderView.ResizeToContents)
         hdr.setStretchLastSection(True)
+        
+        # 设置表格大小调整策略
+        try:
+            policy = QAbstractScrollArea.SizeAdjustPolicy.AdjustToContentsOnFirstShow
+        except AttributeError:
+            policy = getattr(QAbstractScrollArea, "AdjustToContentsOnFirstShow", QAbstractScrollArea.AdjustToContents)
+        self.tbl.setSizeAdjustPolicy(policy)
+        self.tbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
         # 设置表格样式
         self.tbl.setStyleSheet("""
@@ -559,6 +639,14 @@ class MRPViewer(QWidget):
         
         # 设置总计列标题
         self.tbl.setHorizontalHeaderItem(headers_count - 1, QTableWidgetItem("Total"))
+        
+        # 更新表头显示
+        try:
+            hdr = self.tbl.horizontalHeader()
+            hdr.updateGeometry()
+            hdr.repaint()
+        except Exception as e:
+            print(f"更新表头时出错: {e}")
 
         # 增加行用于显示日期和总计行
         calc_type = self.calc_type_combo.currentText()
