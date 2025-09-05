@@ -57,7 +57,7 @@ class MRPService:
                 print(f"📊 [calculate_mrp_kanban] 使用订单日期范围：{start_date} 到 {end_date}")
         
         print(f"📊 [calculate_mrp_kanban] 生成周列表")
-        weeks = MRPService._gen_weeks(start_date, end_date)
+        weeks = MRPService._gen_weeks(start_date, end_date, import_id)
         print(f"📊 [calculate_mrp_kanban] 生成周：{weeks}")
 
         # 1) 成品周需求（ItemCode 维度）
@@ -157,7 +157,7 @@ class MRPService:
                 start_date = order_range["earliest_date"]
                 end_date = order_range["latest_date"]
         
-        weeks = MRPService._gen_weeks(start_date, end_date)
+        weeks = MRPService._gen_weeks(start_date, end_date, import_id)
 
         # 获取成品周需求（基于客户订单）
         parent_weekly = MRPService._fetch_parent_weekly_demand(
@@ -216,19 +216,205 @@ class MRPService:
 
         return {"weeks": weeks, "rows": rows}
 
+    @staticmethod
+    def calculate_comprehensive_mrp_kanban(start_date: str, end_date: str,
+                                          import_id: Optional[int] = None,
+                                          search_filter: Optional[str] = None) -> Dict:
+        """
+        计算综合MRP看板（结合成品库存和零部件库存）
+        
+        返回格式：
+        {
+          "weeks": ["CW31","CW32",...],
+          "rows": [  # 两行成对出现
+             {"ItemId":1,"ItemCode":"RM-001","ItemName":"铝丝", "ItemType":"RM",
+              "RowType":"生产计划","StartOnHand": "48611+1000", "cells":{"CW31":123,"CW32":0,...}},
+             {"ItemId":1,"ItemCode":"RM-001","ItemName":"铝丝", "ItemType":"RM",
+              "RowType":"即时库存","StartOnHand": "48611+1000", "cells":{"CW31":48488,"CW32":...}},
+             ...
+          ]
+        }
+        """
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 开始计算综合MRP看板")
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 参数：start_date={start_date}, end_date={end_date}")
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 参数：import_id={import_id}, search_filter={search_filter}")
+        
+        # 如果有指定的订单版本，使用该版本的日期范围
+        if import_id is not None:
+            print(f"📊 [calculate_comprehensive_mrp_kanban] 获取订单版本日期范围")
+            order_range = MRPService.get_order_version_date_range(import_id)
+            if order_range and order_range.get("earliest_date") and order_range.get("latest_date"):
+                start_date = order_range["earliest_date"]
+                end_date = order_range["latest_date"]
+                print(f"📊 [calculate_comprehensive_mrp_kanban] 使用订单日期范围：{start_date} 到 {end_date}")
+        
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 生成周列表")
+        weeks = MRPService._gen_weeks(start_date, end_date, import_id)
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 生成周：{weeks}")
+
+        # 1) 成品周需求（ItemCode 维度）
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 获取成品周需求")
+        parent_weekly = MRPService._fetch_parent_weekly_demand(
+            start_date, end_date, import_id, search_filter
+        )
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 成品周需求：{parent_weekly}")
+
+        # 2) 展开到子件周需求
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 展开BOM到子件")
+        child_weekly: Dict[int, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+        child_meta: Dict[int, Dict] = {}  # ItemId -> {code,name,type}
+
+        for parent_id, wk_map in parent_weekly.items():
+            print(f"📊 [calculate_comprehensive_mrp_kanban] 处理父物料ID：{parent_id}")
+            for cw, qty in wk_map.items():
+                if qty <= 0:
+                    continue
+                
+                # 展开BOM（只获取有效的BOM和启用的物料）
+                bom_lines = query_all("""
+                    SELECT bl.ChildItemId, bl.QtyPer, i.ItemCode, i.CnName, i.ItemSpec, i.ItemType
+                    FROM BomLines bl
+                    JOIN Items i ON bl.ChildItemId = i.ItemId
+                    WHERE bl.BomId = (
+                        SELECT BomId FROM BomHeaders WHERE ParentItemId = ? AND IsActive = 1
+                    ) AND i.IsActive = 1
+                """, (parent_id,))
+                
+                for e in bom_lines:
+                    # 转换 sqlite3.Row 为字典
+                    if hasattr(e, 'keys'):
+                        e = dict(e)
+                    cid = int(e["ChildItemId"])
+                    child_weekly[cid][cw] += float(e.get("QtyPer") or 0.0) * qty
+                    if cid not in child_meta:
+                        print(f"📊 [calculate_comprehensive_mrp_kanban] 添加物料元数据：ID={cid}, Code={e.get('ItemCode')}, Name={e.get('CnName')}, Spec={e.get('ItemSpec')}")
+                        child_meta[cid] = {
+                            "ItemId": cid,
+                            "ItemCode": e.get("ItemCode", ""),
+                            "CnName": e.get("CnName", ""),
+                            "ItemSpec": e.get("ItemSpec", ""),
+                            "ItemType": e.get("ItemType", "")
+                        }
+
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 子件需求汇总：{len(child_weekly)} 个物料")
+
+        # 3) 获取成品库存信息（用于计算零部件在成品中的数量）
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 获取成品库存信息")
+        parent_inventory = MRPService._fetch_parent_inventory_for_comprehensive()
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 成品库存：{parent_inventory}")
+
+        # 4) 计算每个零部件在成品中的数量
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 计算零部件在成品中的数量")
+        child_in_parent_qty = MRPService._calculate_child_in_parent_quantity(child_meta.keys(), parent_inventory)
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 零部件在成品中的数量：{child_in_parent_qty}")
+
+        # 5) 期初库存（聚合全部仓）
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 获取期初库存")
+        onhand_all = MRPService._fetch_onhand_total()
+
+        # 6) 生成MRP行（每个物料两行：生产计划、即时库存）
+        rows: List[Dict] = []
+        for item_id in sorted(child_weekly.keys(),
+                              key=lambda i: (child_meta[i].get("ItemType",""), child_meta[i].get("ItemCode",""))):
+            meta = child_meta[item_id]
+            print(f"📊 [calculate_comprehensive_mrp_kanban] 生成MRP行：ID={item_id}, Code={meta.get('ItemCode')}, Name={meta.get('CnName')}, Spec={meta.get('ItemSpec')}")
+            plan_cells = {w: float(child_weekly[item_id].get(w, 0.0)) for w in weeks}
+
+            # 期初库存（成品中的数量 + 直接库存数量）
+            direct_onhand = float(onhand_all.get(item_id, 0.0))
+            in_parent_qty = float(child_in_parent_qty.get(item_id, 0.0))
+            start_onhand_str = f"{int(in_parent_qty)}+{int(direct_onhand)}"
+
+            # 生产计划行
+            plan_row = {
+                "ItemId": item_id,
+                "ItemCode": meta.get("ItemCode", ""),
+                "ItemName": meta.get("CnName", ""),
+                "ItemSpec": meta.get("ItemSpec", ""),
+                "ItemType": meta.get("ItemType", ""),
+                "RowType": "生产计划",
+                "StartOnHand": start_onhand_str,
+                "cells": plan_cells
+            }
+            rows.append(plan_row)
+
+            # 即时库存行（累计计算）
+            stock_cells = {}
+            running = direct_onhand + in_parent_qty  # 综合库存
+            for w in weeks:
+                running = running - plan_cells[w]
+                stock_cells[w] = running  # 允许出现负数以暴露缺口
+
+            stock_row = {
+                "ItemId": item_id,
+                "ItemCode": meta.get("ItemCode", ""),
+                "ItemName": meta.get("CnName", ""),
+                "ItemSpec": meta.get("ItemSpec", ""),
+                "ItemType": meta.get("ItemType", ""),
+                "RowType": "即时库存",
+                "StartOnHand": start_onhand_str,
+                "cells": stock_cells
+            }
+            rows.append(stock_row)
+
+        print(f"✅ [calculate_comprehensive_mrp_kanban] 计算完成，返回：weeks={len(weeks)}, rows={len(rows)}")
+        return {"weeks": weeks, "rows": rows}
+
     # ---------------- 明细方法 ---------------- 
     @staticmethod
-    def _gen_weeks(start_date: str, end_date: str) -> List[str]:
-        start = datetime.strptime(start_date, "%Y-%m-%d").date()
-        end = datetime.strptime(end_date, "%Y-%m-%d").date()
+    def _gen_weeks(start_date: str, end_date: str, import_id: Optional[int] = None) -> List[str]:
+        """生成周列表，基于实际的订单日期，参考客户订单处理页面的逻辑"""
+        # 如果有指定的订单版本，使用该版本的订单日期
+        if import_id is not None:
+            # 获取该订单版本的所有唯一订单日期
+            sql = """
+            SELECT DISTINCT col.DeliveryDate
+            FROM CustomerOrderLines col
+            JOIN CustomerOrders co ON col.OrderId = co.OrderId
+            WHERE co.ImportId = ? AND col.LineStatus = 'Active' AND col.DeliveryDate IS NOT NULL
+            ORDER BY col.DeliveryDate
+            """
+            rows = query_all(sql, (import_id,))
+            order_dates = []
+            for row in rows:
+                try:
+                    date_obj = datetime.strptime(row["DeliveryDate"], "%Y-%m-%d").date()
+                    order_dates.append(date_obj)
+                except:
+                    continue
+        else:
+            # 使用日期范围内的所有日期
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            order_dates = []
+            cur = start
+            while cur <= end:
+                order_dates.append(cur)
+                cur += timedelta(days=1)
+        
+        # 去重并排序
+        order_dates = sorted(set(order_dates))
+        
+        # 按年份分组
+        from collections import defaultdict
+        by_year = defaultdict(list)
+        for d in order_dates:
+            by_year[d.isocalendar()[0]].append(d)
+        
+        # 对每年的日期排序
+        for y in by_year:
+            by_year[y].sort()
+        
+        # 生成周列表
         weeks: List[str] = []
-        cur = start
         seen = set()
-        while cur <= end:
-            w = WEEK_FMT.format(cur.isocalendar()[1])
-            if w not in seen:
-                weeks.append(w); seen.add(w)
-            cur += timedelta(days=7)
+        for year in sorted(by_year.keys()):
+            for d in by_year[year]:
+                w = WEEK_FMT.format(d.isocalendar()[1])
+                if w not in seen:
+                    weeks.append(w)
+                    seen.add(w)
+        
         return weeks
 
     @staticmethod
@@ -267,11 +453,19 @@ class MRPService:
         
         # 首先获取订单行数据，然后通过品牌匹配BOM来获取对应的父物料
         sql = f"""
-        SELECT col.ItemNumber, col.CalendarWeek, SUM(col.RequiredQty) AS Qty
+        SELECT 
+            col.ItemNumber,
+            col.DeliveryDate,
+            col.RequiredQty AS Qty,
+            CASE 
+                WHEN col.DeliveryDate IS NOT NULL THEN 
+                    'CW' || printf('%02d', strftime('%W', col.DeliveryDate) + 1)
+                ELSE NULL
+            END AS CalendarWeek
         FROM CustomerOrderLines col
         JOIN CustomerOrders co ON col.OrderId = co.OrderId
         WHERE {where_clause}
-        GROUP BY col.ItemNumber, col.CalendarWeek
+        ORDER BY col.DeliveryDate
         """
         
         rows = query_all(sql, tuple(params))
@@ -284,12 +478,16 @@ class MRPService:
             calendar_week = r["CalendarWeek"]
             qty = float(r["Qty"] or 0.0)
             
+            # 跳过无效的周数据
+            if not calendar_week:
+                continue
+            
             # 通过品牌查找BOM，获取父物料ID
             bom = MRPService.find_bom_by_brand(item_number)
             if bom and bom.get("ParentItemId"):
                 parent_item_id = bom["ParentItemId"]
                 out[parent_item_id][calendar_week] += qty
-                print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 匹配到父物料ID {parent_item_id}")
+                print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 匹配到父物料ID {parent_item_id}, CW={calendar_week}, Qty={qty}")
             else:
                 print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 未找到对应BOM")
         
@@ -407,6 +605,51 @@ class MRPService:
                 "latest_date": row["latest_date"]
             }
         return {}
+
+    @staticmethod
+    def _fetch_parent_inventory_for_comprehensive() -> Dict[int, float]:
+        """获取成品库存信息，用于综合MRP计算"""
+        sql = """
+        SELECT i.ItemId, SUM(inv.QtyOnHand) as TotalQty
+        FROM Items i
+        JOIN InventoryBalance inv ON i.ItemId = inv.ItemId
+        WHERE i.ItemType = 'FG' AND i.IsActive = 1
+        GROUP BY i.ItemId
+        """
+        rows = query_all(sql)
+        return {row["ItemId"]: float(row["TotalQty"] or 0.0) for row in rows}
+
+    @staticmethod
+    def _calculate_child_in_parent_quantity(child_item_ids: List[int], parent_inventory: Dict[int, float]) -> Dict[int, float]:
+        """计算每个零部件在成品中的数量"""
+        child_in_parent_qty = {}
+        
+        for child_id in child_item_ids:
+            total_qty = 0.0
+            
+            # 查找所有包含该零部件的有效BOM
+            sql = """
+            SELECT bh.ParentItemId, bl.QtyPer
+            FROM BomLines bl
+            JOIN BomHeaders bh ON bl.BomId = bh.BomId
+            WHERE bl.ChildItemId = ? AND bh.IsActive = 1
+            """
+            bom_lines = query_all(sql, (child_id,))
+            
+            for line in bom_lines:
+                # 转换 sqlite3.Row 为字典
+                if hasattr(line, 'keys'):
+                    line = dict(line)
+                parent_id = line["ParentItemId"]
+                qty_per = float(line.get("QtyPer") or 0.0)
+                parent_qty = parent_inventory.get(parent_id, 0.0)
+                
+                # 零部件在成品中的数量 = BOM用量 × 成品库存
+                total_qty += qty_per * parent_qty
+            
+            child_in_parent_qty[child_id] = total_qty
+        
+        return child_in_parent_qty
 
     # ---------------- 新增方法：基于商品品牌字段的BOM匹配 ---------------- 
     @staticmethod

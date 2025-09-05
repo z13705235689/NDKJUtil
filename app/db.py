@@ -1,25 +1,68 @@
 import sqlite3
 import os
+import sys
+import tempfile
+import shutil
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional
+from app.utils.resource_path import get_app_root, get_resource_path
+import atexit
 
 
 class DatabaseManager:
     """数据库管理器"""
     
-    def __init__(self):
-        # 数据库文件放在项目根目录下
-        self.project_root = Path(__file__).parent.parent
+    def __init__(self, use_embedded_db=True):
+        """
+        初始化数据库管理器
+        
+        Args:
+            use_embedded_db: 是否使用内置数据库（True为内置，False为外部文件）
+        """
+        self.use_embedded_db = use_embedded_db
+        self.db_path = None
+        
+        if use_embedded_db:
+            # 使用内置数据库
+            self._init_embedded_db()
+        else:
+            # 使用外部数据库文件
+            self._init_external_db()
+        
+        # 初始化数据库
+        self._init_db()
+    
+    def _init_embedded_db(self):
+        """初始化内置数据库"""
+        try:
+            # 获取exe文件所在目录
+            if getattr(sys, 'frozen', False):
+                # 打包后的exe
+                exe_dir = Path(sys.executable).parent
+            else:
+                # 开发环境
+                exe_dir = Path.cwd()
+            
+            # 在exe同目录下创建数据库文件
+            self.db_path = exe_dir / "mes.db"
+            
+            print(f"使用内置数据库: {self.db_path}")
+            
+        except Exception as e:
+            print(f"创建内置数据库失败: {e}")
+            # 回退到外部数据库
+            self._init_external_db()
+    
+    def _init_external_db(self):
+        # 获取应用程序根目录
+        self.project_root = get_app_root()
         self.db_path = self.project_root / 'mes.db'
         
         # 确保项目目录存在
         self.project_root.mkdir(exist_ok=True)
         
-        print(f"数据库路径: {self.db_path}")
-        
-        # 初始化数据库
-        self._init_db()
+        print(f"使用外部数据库: {self.db_path}")
     
     def _init_db(self):
         """初始化数据库"""
@@ -32,8 +75,9 @@ class DatabaseManager:
             # 连接数据库并创建表
             with self.get_conn() as conn:
                 # 读取schema.sql文件
-                schema_file = Path(__file__).parent / 'schema.sql'
-                if schema_file.exists():
+                schema_file = get_resource_path("app/schema.sql")
+                
+                if os.path.exists(schema_file):
                     with open(schema_file, 'r', encoding='utf-8') as f:
                         schema_sql = f.read()
                     
@@ -68,8 +112,9 @@ class DatabaseManager:
                 """)
                 
                 # 读取并执行完整的schema.sql
-                schema_file = Path(__file__).parent / 'schema.sql'
-                if schema_file.exists():
+                schema_file = get_resource_path("app/schema.sql")
+                
+                if os.path.exists(schema_file):
                     with open(schema_file, 'r', encoding='utf-8') as f:
                         schema_sql = f.read()
                     
@@ -277,10 +322,61 @@ class DatabaseManager:
         with self.get_conn() as conn:
             cursor = conn.cursor()
             return cursor.lastrowid
+    
+    def backup_database(self, backup_path: str) -> bool:
+        """备份数据库"""
+        try:
+            if self.db_path.exists():
+                shutil.copy2(self.db_path, backup_path)
+                print(f"数据库已备份到: {backup_path}")
+                return True
+            else:
+                print("数据库文件不存在，无法备份")
+                return False
+        except Exception as e:
+            print(f"备份数据库失败: {e}")
+            return False
+    
+    def restore_database(self, backup_path: str) -> bool:
+        """恢复数据库"""
+        try:
+            if os.path.exists(backup_path):
+                shutil.copy2(backup_path, self.db_path)
+                print(f"数据库已从 {backup_path} 恢复")
+                return True
+            else:
+                print(f"备份文件不存在: {backup_path}")
+                return False
+        except Exception as e:
+            print(f"恢复数据库失败: {e}")
+            return False
+    
+    def export_database(self, export_path: str) -> bool:
+        """导出数据库"""
+        return self.backup_database(export_path)
+    
+    def import_database(self, import_path: str) -> bool:
+        """导入数据库"""
+        return self.restore_database(import_path)
+    
+    def get_database_info(self) -> dict:
+        """获取数据库信息"""
+        info = {
+            "path": str(self.db_path),
+            "embedded": self.use_embedded_db,
+            "exists": self.db_path.exists() if self.db_path else False,
+            "size": self.db_path.stat().st_size if self.db_path and self.db_path.exists() else 0
+        }
+        return info
+    
+    def cleanup(self):
+        """清理资源"""
+        # 对于文件数据库，不需要特殊清理
+        print("数据库连接已关闭")
 
 
 # 全局数据库管理器实例
-db_manager = DatabaseManager()
+db_manager = DatabaseManager(use_embedded_db=True)
 
 
 def get_conn():
@@ -319,3 +415,28 @@ def get_last_id() -> int:
 def execute_many(sql: str, params_list: list) -> int:
     """批量执行SQL语句"""
     return db_manager.execute_many(sql, params_list)
+
+# 数据库备份和恢复功能
+def backup_database(backup_path: str) -> bool:
+    """备份数据库"""
+    return db_manager.backup_database(backup_path)
+
+def restore_database(backup_path: str) -> bool:
+    """恢复数据库"""
+    return db_manager.restore_database(backup_path)
+
+def export_database(export_path: str) -> bool:
+    """导出数据库"""
+    return db_manager.export_database(export_path)
+
+def import_database(import_path: str) -> bool:
+    """导入数据库"""
+    return db_manager.import_database(import_path)
+
+def get_database_info() -> dict:
+    """获取数据库信息"""
+    return db_manager.get_database_info()
+
+def cleanup_database():
+    """清理数据库资源"""
+    db_manager.cleanup()

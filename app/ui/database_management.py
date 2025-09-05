@@ -206,6 +206,41 @@ class DatabaseManagement(QWidget):
         restore_btn = QPushButton("恢复数据库")
         restore_btn.clicked.connect(self.restore_database)
         self.toolbar.addWidget(restore_btn)
+        
+        # 清空数据库按钮
+        clear_db_btn = QPushButton("清空数据库")
+        clear_db_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
+        clear_db_btn.clicked.connect(self.clear_database)
+        self.toolbar.addWidget(clear_db_btn)
+        
+        # 数据库信息显示
+        self.db_info_label = QLabel("数据库信息")
+        self.db_info_label.setStyleSheet("""
+            QLabel {
+                color: #666;
+                font-size: 11px;
+                padding: 4px 8px;
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+            }
+        """)
+        self.toolbar.addWidget(self.db_info_label)
+        
+        # 更新数据库信息显示
+        self.update_db_info_display()
     
     def create_statusbar(self):
         """创建状态栏"""
@@ -1302,6 +1337,25 @@ class DatabaseManagement(QWidget):
         """创建新表"""
         QMessageBox.information(self, "信息", "创建新表功能开发中...")
     
+    def update_db_info_display(self):
+        """更新数据库信息显示"""
+        try:
+            from app.db import get_database_info
+            db_info = get_database_info()
+            
+            if db_info["embedded"]:
+                db_type = "内置数据库"
+            else:
+                db_type = "外部数据库"
+            
+            size_mb = db_info["size"] / (1024 * 1024) if db_info["size"] > 0 else 0
+            
+            info_text = f"{db_type} | {size_mb:.1f}MB"
+            self.db_info_label.setText(info_text)
+            
+        except Exception as e:
+            self.db_info_label.setText("数据库信息获取失败")
+    
     def backup_database(self):
         """备份数据库"""
         try:
@@ -1322,6 +1376,9 @@ class DatabaseManagement(QWidget):
                 
                 self.status_label.setText(f"数据库已备份到: {backup_path}")
                 QMessageBox.information(self, "成功", f"数据库已备份到: {backup_path}")
+                
+                # 更新数据库信息显示
+                self.update_db_info_display()
                 
         except Exception as e:
             QMessageBox.warning(self, "错误", f"备份数据库失败: {str(e)}")
@@ -1468,6 +1525,9 @@ class DatabaseManagement(QWidget):
                     # 刷新界面
                     self.load_database_info()
                     self.load_table_list()
+                    
+                    # 更新数据库信息显示
+                    self.update_db_info_display()
                     
                     # 清空当前选择
                     self.current_table = None
@@ -1741,3 +1801,197 @@ class DatabaseManagement(QWidget):
                     
             except Exception as e:
                 QMessageBox.warning(self, "错误", f"清空表失败: {str(e)}")
+    
+    def clear_database(self):
+        """清空数据库"""
+        try:
+            from app.db import DatabaseManager, get_conn
+            db_manager = DatabaseManager()
+            
+            # 获取数据库信息
+            with get_conn() as conn:
+                cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = cursor.fetchall()
+                
+                if not tables:
+                    QMessageBox.information(self, "信息", "数据库已经是空的，无需清空")
+                    return
+                
+                # 获取每个表的记录数
+                table_info = {}
+                total_records = 0
+                for table_name, in tables:
+                    cursor = conn.execute(f"SELECT COUNT(*) FROM {table_name}")
+                    record_count = cursor.fetchone()[0]
+                    table_info[table_name] = record_count
+                    total_records += record_count
+                
+                if total_records == 0:
+                    QMessageBox.information(self, "信息", "数据库中没有数据，无需清空")
+                    return
+            
+            # 显示详细的警告信息
+            warning_message = f"""
+⚠️  危险操作警告 ⚠️
+
+您即将清空整个数据库，这将删除所有数据！
+
+📊 当前数据库包含：
+• {len(tables)} 个表
+• {total_records} 条记录
+
+📋 将被清空的表：
+"""
+            
+            for table_name, record_count in table_info.items():
+                warning_message += f"  • {table_name}: {record_count} 条记录\n"
+            
+            warning_message += f"""
+
+💾 强烈建议：
+1. 在清空前先备份数据库
+2. 确认您真的需要清空所有数据
+3. 此操作不可撤销！
+
+🔴 确定要继续清空数据库吗？
+"""
+            
+            # 显示确认对话框
+            reply = QMessageBox.question(
+                self, 
+                "⚠️ 确认清空数据库", 
+                warning_message,
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                # 再次确认
+                final_reply = QMessageBox.question(
+                    self,
+                    "🔴 最终确认",
+                    "这是最后一次确认！\n\n"
+                    "清空数据库后，所有数据将永久丢失！\n"
+                    "此操作不可撤销！\n\n"
+                    "确定要清空数据库吗？",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                
+                if final_reply == QMessageBox.Yes:
+                    # 显示进度对话框
+                    progress_dialog = QMessageBox(self)
+                    progress_dialog.setWindowTitle("正在清空数据库")
+                    progress_dialog.setText("正在清空数据库，请稍候...\n\n注意：请勿关闭此窗口")
+                    progress_dialog.setStandardButtons(QMessageBox.Ok)
+                    progress_dialog.setModal(False)
+                    progress_dialog.show()
+                    
+                    # 处理事件，让进度对话框显示
+                    QApplication.processEvents()
+                    
+                    try:
+                        # 备份当前数据库到程序运行目录
+                        try:
+                            import shutil
+                            from pathlib import Path
+                            from datetime import datetime
+                            
+                            # 获取程序运行目录
+                            program_dir = Path.cwd()
+                            
+                            # 生成备份文件名：当前数据库名_清空前备份_时间戳.db
+                            current_db_name = db_manager.db_path.stem
+                            backup_filename = f"{current_db_name}_清空前备份_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                            backup_path = program_dir / backup_filename
+                            
+                            if db_manager.db_path.exists():
+                                # 复制当前数据库到程序运行目录
+                                shutil.copy2(db_manager.db_path, backup_path)
+                                print(f"✅ 数据库已自动备份到: {backup_path}")
+                                
+                                # 更新进度对话框信息
+                                progress_dialog.setText(f"正在清空数据库，请稍候...\n\n已自动备份数据库到:\n{backup_filename}")
+                                QApplication.processEvents()
+                            else:
+                                print("⚠️ 数据库文件不存在，跳过备份")
+                                backup_path = None
+                                
+                        except Exception as e:
+                            QMessageBox.warning(self, "警告", f"无法备份数据库: {str(e)}")
+                            backup_path = None
+                        
+                        # 清空数据库
+                        with get_conn() as conn:
+                            # 禁用外键约束
+                            conn.execute("PRAGMA foreign_keys = OFF")
+                            
+                            # 清空所有表
+                            cleared_tables = []
+                            for table_name, in tables:
+                                conn.execute(f"DELETE FROM {table_name}")
+                                cleared_tables.append(table_name)
+                            
+                            # 重置自增ID
+                            for table_name, in tables:
+                                conn.execute(f"DELETE FROM sqlite_sequence WHERE name = ?", (table_name,))
+                            
+                            # 启用外键约束
+                            conn.execute("PRAGMA foreign_keys = ON")
+                            
+                            conn.commit()
+                        
+                        # 关闭进度对话框
+                        progress_dialog.close()
+                        
+                        # 刷新界面
+                        self.load_database_info()
+                        self.load_table_list()
+                        
+                        # 更新数据库信息显示
+                        self.update_db_info_display()
+                        
+                        # 清空当前选择
+                        self.current_table = None
+                        self.current_table_label.setText("当前表: 未选择")
+                        self.data_table.setRowCount(0)
+                        self.data_table.setColumnCount(0)
+                        self.structure_table.setRowCount(0)
+                        
+                        self.status_label.setText(f"✅ 数据库清空成功！已清空 {len(cleared_tables)} 个表")
+                        
+                        # 显示成功信息
+                        success_message = f"✅ 数据库清空成功！\n\n"
+                        success_message += f"📊 已清空 {len(cleared_tables)} 个表:\n"
+                        for table_name in cleared_tables:
+                            success_message += f"  • {table_name}\n"
+                        success_message += f"\n🔄 数据库已重置为初始状态。\n\n"
+                        
+                        if backup_path and backup_path.exists():
+                            success_message += f"💾 重要提示：原数据库已自动备份到程序目录:\n"
+                            success_message += f"   文件名：{backup_path.name}\n"
+                            success_message += f"   位置：{backup_path.parent}\n\n"
+                            success_message += f"📝 如需恢复原数据，请使用此备份文件。"
+                        else:
+                            success_message += f"⚠️ 警告：数据库备份失败，请手动检查数据完整性"
+                        
+                        QMessageBox.information(
+                            self, 
+                            "✅ 清空成功", 
+                            success_message
+                        )
+                        
+                    except Exception as e:
+                        # 关闭进度对话框
+                        progress_dialog.close()
+                        
+                        QMessageBox.critical(
+                            self, 
+                            "❌ 清空失败", 
+                            f"清空数据库失败！\n\n"
+                            f"错误详情: {str(e)}\n\n"
+                            f"请检查数据库文件权限或联系技术支持。"
+                        )
+                
+        except Exception as e:
+            QMessageBox.warning(self, "错误", f"清空数据库失败: {str(e)}")

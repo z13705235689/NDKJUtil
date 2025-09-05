@@ -14,6 +14,10 @@ from PySide6.QtGui import QFont, QColor
 from app.services.item_service import ItemService
 from app.services.bom_service import BomService
 from app.services.item_import_service import ItemImportService
+from app.utils.resource_path import get_resource_path
+import os
+import sys
+import shutil
 
 
 class ItemAddDialog(QDialog):
@@ -22,9 +26,9 @@ class ItemAddDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("新增物料")
-        self.resize(550, 650)
-        self.setMinimumSize(500, 500)
-        self.setMaximumSize(800, 900)
+        self.resize(550, 750)  # 增加高度
+        self.setMinimumSize(500, 600)  # 增加最小高度
+        self.setMaximumSize(800, 1000)  # 增加最大高度
         self.setModal(True)
         self.setup_ui()
     
@@ -127,9 +131,55 @@ class ItemAddDialog(QDialog):
         
         # 备注
         self.remark_edit = QTextEdit()
-        self.remark_edit.setMaximumHeight(60)
-        self.remark_edit.setPlaceholderText("请输入备注信息")
+        self.remark_edit.setMinimumHeight(80)  # 增加最小高度
+        self.remark_edit.setMaximumHeight(120)  # 增加最大高度
+        self.remark_edit.setPlaceholderText("请输入备注信息（可选）")
+        self.remark_edit.setStyleSheet("""
+            QTextEdit {
+                padding: 8px;
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                font-size: 14px;
+                line-height: 1.4;
+                background: white;
+            }
+            QTextEdit:focus {
+                border-color: #1890ff;
+                box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+            }
+        """)
         form_layout.addRow("备注:", self.remark_edit)
+        
+        # 是否启用
+        self.is_active_checkbox = QCheckBox("启用物料")
+        self.is_active_checkbox.setChecked(True)  # 默认启用
+        self.is_active_checkbox.setStyleSheet("""
+            QCheckBox {
+                font-size: 14px;
+                color: #333;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QCheckBox::indicator:unchecked {
+                border: 2px solid #d9d9d9;
+                background: white;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                border: 2px solid #1890ff;
+                background: #1890ff;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked::after {
+                content: "✓";
+                color: white;
+                font-weight: bold;
+                font-size: 12px;
+            }
+        """)
+        form_layout.addRow("状态:", self.is_active_checkbox)
         
         main_layout.addLayout(form_layout)
         
@@ -275,7 +325,8 @@ class ItemAddDialog(QDialog):
             'SafetyStock': self.safety_stock_spin.value(),
             'Remark': self.remark_edit.toPlainText().strip(),
             'Brand': self.brand_edit.text().strip() if item_type == 'FG' else '',
-            'ParentItemId': parent_item_id
+            'ParentItemId': parent_item_id,
+            'IsActive': 1 if self.is_active_checkbox.isChecked() else 0
         }
 
 
@@ -381,9 +432,54 @@ class ItemEditDialog(QDialog):
         
         # 备注
         self.remark_edit = QTextEdit()
-        self.remark_edit.setMaximumHeight(60)
-        self.remark_edit.setPlaceholderText("请输入备注信息")
+        self.remark_edit.setMinimumHeight(80)  # 增加最小高度
+        self.remark_edit.setMaximumHeight(120)  # 增加最大高度
+        self.remark_edit.setPlaceholderText("请输入备注信息（可选）")
+        self.remark_edit.setStyleSheet("""
+            QTextEdit {
+                padding: 8px;
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                font-size: 14px;
+                line-height: 1.4;
+                background: white;
+            }
+            QTextEdit:focus {
+                border-color: #1890ff;
+                box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+            }
+        """)
         basic_layout.addRow("备注:", self.remark_edit)
+        
+        # 是否启用
+        self.is_active_checkbox = QCheckBox("启用物料")
+        self.is_active_checkbox.setStyleSheet("""
+            QCheckBox {
+                font-size: 14px;
+                color: #333;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QCheckBox::indicator:unchecked {
+                border: 2px solid #d9d9d9;
+                background: white;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                border: 2px solid #1890ff;
+                background: #1890ff;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked::after {
+                content: "✓";
+                color: white;
+                font-weight: bold;
+                font-size: 12px;
+            }
+        """)
+        basic_layout.addRow("状态:", self.is_active_checkbox)
         
         scroll_layout.addWidget(basic_group)
         
@@ -558,6 +654,10 @@ class ItemEditDialog(QDialog):
             
             self.remark_edit.setPlainText(str(self.item_data['Remark'] if self.item_data['Remark'] else ''))
             
+            # 设置启用状态
+            is_active = self.item_data.get('IsActive', 1)
+            self.is_active_checkbox.setChecked(bool(is_active))
+            
             print("物料数据加载完成")  # 调试信息
             
         except Exception as e:
@@ -586,7 +686,8 @@ class ItemEditDialog(QDialog):
             'SafetyStock': self.safety_stock_spin.value(),
             'Remark': self.remark_edit.toPlainText().strip(),
             'Brand': self.brand_edit.text().strip() if item_type == 'FG' else '',
-            'ParentItemId': parent_item_id
+            'ParentItemId': parent_item_id,
+            'IsActive': 1 if self.is_active_checkbox.isChecked() else 0
         }
 
 
@@ -658,6 +759,28 @@ class ItemEditor(QWidget):
         """)
         self.import_btn.clicked.connect(self.import_items)
         
+        # 下载模板按钮
+        self.download_template_btn = QPushButton("下载模板")
+        self.download_template_btn.setStyleSheet("""
+            QPushButton {
+                background: #13c2c2;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 90px;
+            }
+            QPushButton:hover {
+                background: #36cfc9;
+            }
+            QPushButton:pressed {
+                background: #08979c;
+            }
+        """)
+        self.download_template_btn.clicked.connect(self.download_template)
+        
         # 删除选中按钮
         self.delete_btn = QPushButton("删除选中")
         self.delete_btn.setStyleSheet("""
@@ -684,6 +807,58 @@ class ItemEditor(QWidget):
         self.delete_btn.clicked.connect(self.delete_selected_items)
         self.delete_btn.setEnabled(False)
         
+        # 批量启用按钮
+        self.batch_enable_btn = QPushButton("批量启用")
+        self.batch_enable_btn.setStyleSheet("""
+            QPushButton {
+                background: white;
+                color: #52c41a;
+                border: 1px solid #52c41a;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 90px;
+            }
+            QPushButton:hover {
+                background: #52c41a;
+                color: white;
+            }
+            QPushButton:disabled {
+                background: #f5f5f5;
+                color: #bfbfbf;
+                border: 1px solid #d9d9d9;
+            }
+        """)
+        self.batch_enable_btn.clicked.connect(self.batch_enable_items)
+        self.batch_enable_btn.setEnabled(False)
+        
+        # 批量禁用按钮
+        self.batch_disable_btn = QPushButton("批量禁用")
+        self.batch_disable_btn.setStyleSheet("""
+            QPushButton {
+                background: white;
+                color: #faad14;
+                border: 1px solid #faad14;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                min-width: 90px;
+            }
+            QPushButton:hover {
+                background: #faad14;
+                color: white;
+            }
+            QPushButton:disabled {
+                background: #f5f5f5;
+                color: #bfbfbf;
+                border: 1px solid #d9d9d9;
+            }
+        """)
+        self.batch_disable_btn.clicked.connect(self.batch_disable_items)
+        self.batch_disable_btn.setEnabled(False)
+        
         # 刷新按钮
         self.refresh_btn = QPushButton("刷新")
         self.refresh_btn.setStyleSheet("""
@@ -707,7 +882,10 @@ class ItemEditor(QWidget):
         
         button_layout.addWidget(self.add_btn)
         button_layout.addWidget(self.import_btn)
+        button_layout.addWidget(self.download_template_btn)
         button_layout.addWidget(self.delete_btn)
+        button_layout.addWidget(self.batch_enable_btn)
+        button_layout.addWidget(self.batch_disable_btn)
         button_layout.addWidget(self.refresh_btn)
         
         # 全选按钮
@@ -829,8 +1007,32 @@ class ItemEditor(QWidget):
         """)
         self.type_filter_combo.currentTextChanged.connect(self.filter_by_type)
         
+        # 添加状态筛选
+        status_filter_label = QLabel("启用状态:")
+        self.status_filter_combo = QComboBox()
+        self.status_filter_combo.addItem("全部", "")
+        self.status_filter_combo.addItem("启用", "1")
+        self.status_filter_combo.addItem("禁用", "0")
+        self.status_filter_combo.setStyleSheet("""
+            QComboBox {
+                padding: 8px 14px;
+                border: 1px solid #d9d9d9;
+                border-radius: 4px;
+                font-size: 13px;
+                min-width: 100px;
+                background: white;
+            }
+            QComboBox:focus {
+                border-color: #1890ff;
+                box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+            }
+        """)
+        self.status_filter_combo.currentTextChanged.connect(self.filter_by_status)
+        
         search_layout.addWidget(filter_label)
         search_layout.addWidget(self.type_filter_combo)
+        search_layout.addWidget(status_filter_label)
+        search_layout.addWidget(self.status_filter_combo)
         search_layout.addStretch()
         
         layout.addWidget(search_frame)
@@ -839,7 +1041,7 @@ class ItemEditor(QWidget):
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(10)  # 选择列 + 9个数据列
         self.items_table.setHorizontalHeaderLabels([
-            "全选", "物资编码", "物资名称", "物资规格", "物资类型", "单位", "组成数量", "安全库存", "商品品牌", "操作"
+            "全选", "物资编码", "物资名称", "物资规格", "物资类型", "单位", "启用状态", "安全库存", "商品品牌", "操作"
         ])
         
         # 启用排序功能
@@ -928,13 +1130,14 @@ class ItemEditor(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 规格根据内容调整
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 类型根据内容调整
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 单位根据内容调整
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 数量根据内容调整
+        header.setSectionResizeMode(6, QHeaderView.Fixed)            # 启用状态固定宽度
         header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # 安全库存根据内容调整
         header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # 商品品牌根据内容调整
         header.setSectionResizeMode(9, QHeaderView.Fixed)             # 操作列固定宽度
         
         # 设置固定列宽
         self.items_table.setColumnWidth(0, 50)   # 选择列宽度
+        self.items_table.setColumnWidth(6, 100)  # 启用状态列宽度（增加宽度）
         self.items_table.setColumnWidth(9, 120)  # 操作列宽度
         
         # 在表头第一列添加全选复选框
@@ -975,7 +1178,7 @@ class ItemEditor(QWidget):
     def load_items(self):
         """加载物料列表"""
         try:
-            items = ItemService.get_all_items()
+            items = ItemService.get_all_items_with_status()
             self.populate_items_table(items)
         except Exception as e:
             QMessageBox.critical(self, "错误", f"加载物料列表失败: {str(e)}")
@@ -983,17 +1186,42 @@ class ItemEditor(QWidget):
     def filter_by_type(self):
         """根据物料类型筛选"""
         try:
-            # 获取当前选中的物料类型
+            # 获取当前选中的物料类型和状态
             selected_type = self.type_filter_combo.currentData()
+            selected_status = self.status_filter_combo.currentData()
             
-            # 获取所有物料
-            all_items = ItemService.get_all_items()
+            # 获取所有物料（包括启用和禁用状态）
+            all_items = ItemService.get_all_items_with_status()
             
-            # 根据类型筛选
+            # 根据类型和状态筛选
+            filtered_items = all_items
             if selected_type:
-                filtered_items = [item for item in all_items if item['ItemType'] == selected_type]
-            else:
-                filtered_items = all_items
+                filtered_items = [item for item in filtered_items if item['ItemType'] == selected_type]
+            if selected_status:
+                filtered_items = [item for item in filtered_items if item['IsActive'] == int(selected_status)]
+            
+            # 重新填充表格
+            self.populate_items_table(filtered_items)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"筛选物料失败: {str(e)}")
+
+    def filter_by_status(self):
+        """根据启用状态筛选"""
+        try:
+            # 获取当前选中的物料类型和状态
+            selected_type = self.type_filter_combo.currentData()
+            selected_status = self.status_filter_combo.currentData()
+            
+            # 获取所有物料（包括启用和禁用状态）
+            all_items = ItemService.get_all_items_with_status()
+            
+            # 根据类型和状态筛选
+            filtered_items = all_items
+            if selected_type:
+                filtered_items = [item for item in filtered_items if item['ItemType'] == selected_type]
+            if selected_status:
+                filtered_items = [item for item in filtered_items if item['IsActive'] == int(selected_status)]
             
             # 重新填充表格
             self.populate_items_table(filtered_items)
@@ -1006,6 +1234,7 @@ class ItemEditor(QWidget):
         try:
             search_text = self.search_edit.text().strip()
             selected_type = self.type_filter_combo.currentData()
+            selected_status = self.status_filter_combo.currentData()
             
             if search_text:
                 # 多字段搜索
@@ -1014,13 +1243,16 @@ class ItemEditor(QWidget):
                 # 如果同时有类型筛选，进一步筛选
                 if selected_type:
                     items = [item for item in items if item['ItemType'] == selected_type]
+                if selected_status:
+                    items = [item for item in items if item['IsActive'] == int(selected_status)]
             else:
-                # 没有搜索文本，只按类型筛选
+                # 没有搜索文本，按类型和状态筛选
+                all_items = ItemService.get_all_items_with_status()
+                items = all_items
                 if selected_type:
-                    all_items = ItemService.get_all_items()
-                    items = [item for item in all_items if item['ItemType'] == selected_type]
-                else:
-                    items = ItemService.get_all_items()
+                    items = [item for item in items if item['ItemType'] == selected_type]
+                if selected_status:
+                    items = [item for item in items if item['IsActive'] == int(selected_status)]
             
             self.populate_items_table(items)
             
@@ -1030,8 +1262,8 @@ class ItemEditor(QWidget):
     def search_items_by_multiple_fields(self, search_text):
         """多字段模糊搜索物料"""
         try:
-            # 获取所有物料
-            all_items = ItemService.get_all_items()
+            # 获取所有物料（包括启用和禁用状态）
+            all_items = ItemService.get_all_items_with_status()
             search_text_lower = search_text.lower()
             
             # 在多个字段中进行模糊搜索
@@ -1066,7 +1298,7 @@ class ItemEditor(QWidget):
         except Exception as e:
             print(f"多字段模糊搜索失败: {e}")
             # 如果多字段搜索失败，回退到原来的搜索方法
-            return ItemService.search_items(search_text)
+            return ItemService.search_items_with_status(search_text)
     
     def on_search_text_changed(self):
         """搜索文本改变时的实时搜索"""
@@ -1086,6 +1318,7 @@ class ItemEditor(QWidget):
         """清空搜索"""
         self.search_edit.clear()
         self.type_filter_combo.setCurrentIndex(0)  # 重置为"全部"
+        self.status_filter_combo.setCurrentIndex(0)  # 重置为"全部"
         self.load_items()  # 重新加载所有物料
     
     def show_context_menu(self, position):
@@ -1313,6 +1546,79 @@ class ItemEditor(QWidget):
             # 调用原始的键盘事件处理
             QTableWidget.keyPressEvent(self.items_table, event)
     
+    def create_status_label(self, is_active):
+        """创建状态标签"""
+        status_widget = QWidget()
+        layout = QHBoxLayout(status_widget)
+        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setSpacing(4)
+        
+        # 创建状态图标
+        icon_label = QLabel()
+        icon_label.setFixedSize(8, 8)
+        icon_label.setStyleSheet(f"""
+            QLabel {{
+                background: {'#52c41a' if is_active else '#ff4d4f'};
+                border-radius: 4px;
+                border: 1px solid {'#389e0d' if is_active else '#cf1322'};
+            }}
+        """)
+        
+        # 创建状态文本
+        status_label = QLabel("启用" if is_active else "禁用")
+        status_label.setAlignment(Qt.AlignCenter)
+        status_label.setMinimumHeight(24)
+        status_label.setMaximumHeight(24)
+        
+        # 设置样式 - 椭圆形状态标签
+        if is_active:
+            status_label.setStyleSheet("""
+                QLabel {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #52c41a, stop:1 #389e0d);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 4px 12px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    min-width: 40px;
+                    max-width: 50px;
+                }
+                QLabel:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #73d13d, stop:1 #52c41a);
+                }
+            """)
+        else:
+            status_label.setStyleSheet("""
+                QLabel {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #ff4d4f, stop:1 #cf1322);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 4px 12px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    min-width: 40px;
+                    max-width: 50px;
+                }
+                QLabel:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #ff7875, stop:1 #ff4d4f);
+                }
+            """)
+        
+        layout.addWidget(icon_label)
+        layout.addWidget(status_label)
+        layout.setAlignment(Qt.AlignCenter)
+        
+        # 设置widget的属性，用于排序
+        status_widget.setProperty("sort_data", is_active)
+        
+        return status_widget
+
     def populate_items_table(self, items):
         """填充物料表格"""
         self.items_table.setRowCount(len(items))
@@ -1359,10 +1665,21 @@ class ItemEditor(QWidget):
             unit_item.setData(Qt.UserRole, item['Unit'])  # 用于排序
             self.items_table.setItem(row, 5, unit_item)
             
-            # 数量
-            qty_item = QTableWidgetItem(str(item['Quantity']))
-            qty_item.setData(Qt.UserRole, float(item['Quantity']))  # 用于排序
-            self.items_table.setItem(row, 6, qty_item)
+                    # 启用状态 - 使用简单的文本显示
+            is_active = item.get('IsActive', 1)
+            status_text = "启用" if is_active else "禁用"
+            status_item = QTableWidgetItem(status_text)
+            status_item.setData(Qt.UserRole, is_active)  # 用于排序
+            
+            # 设置状态颜色和样式
+            if is_active:
+                status_item.setBackground(QColor(240, 248, 255))  # 浅蓝色背景
+                status_item.setForeground(QColor(0, 128, 0))     # 绿色文字
+            else:
+                status_item.setBackground(QColor(255, 240, 240))  # 浅红色背景
+                status_item.setForeground(QColor(128, 0, 0))     # 红色文字
+            
+            self.items_table.setItem(row, 6, status_item)
             
             # 安全库存
             stock_item = QTableWidgetItem(str(item['SafetyStock']))
@@ -1532,6 +1849,84 @@ class ItemEditor(QWidget):
                     
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"删除物料时发生错误: {str(e)}")
+
+    def batch_enable_items(self):
+        """批量启用选中的物料"""
+        if not self.selected_items:
+            QMessageBox.warning(self, "警告", "请先选择要启用的物料！")
+            return
+        
+        reply = QMessageBox.question(
+            self, "确认启用", 
+            f"确定要启用选中的 {len(self.selected_items)} 个物料吗？",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                success_count = 0
+                error_count = 0
+                
+                for item_id in self.selected_items:
+                    try:
+                        ItemService.toggle_item_status(item_id, True)
+                        success_count += 1
+                    except Exception as e:
+                        error_count += 1
+                        print(f"启用物料 {item_id} 失败: {str(e)}")
+                
+                if success_count > 0:
+                    QMessageBox.information(
+                        self, "启用结果", 
+                        f"成功启用 {success_count} 个物料" + 
+                        (f"，{error_count} 个失败" if error_count > 0 else "")
+                    )
+                    self.load_items()
+                else:
+                    QMessageBox.critical(self, "错误", "启用物料失败！")
+                    
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"启用物料时发生错误: {str(e)}")
+
+    def batch_disable_items(self):
+        """批量禁用选中的物料"""
+        if not self.selected_items:
+            QMessageBox.warning(self, "警告", "请先选择要禁用的物料！")
+            return
+        
+        reply = QMessageBox.question(
+            self, "确认禁用", 
+            f"确定要禁用选中的 {len(self.selected_items)} 个物料吗？\n禁用的物料将不会在正常业务中使用！",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                success_count = 0
+                error_count = 0
+                
+                for item_id in self.selected_items:
+                    try:
+                        ItemService.toggle_item_status(item_id, False)
+                        success_count += 1
+                    except Exception as e:
+                        error_count += 1
+                        print(f"禁用物料 {item_id} 失败: {str(e)}")
+                
+                if success_count > 0:
+                    QMessageBox.information(
+                        self, "禁用结果", 
+                        f"成功禁用 {success_count} 个物料" + 
+                        (f"，{error_count} 个失败" if error_count > 0 else "")
+                    )
+                    self.load_items()
+                else:
+                    QMessageBox.critical(self, "错误", "禁用物料失败！")
+                    
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"禁用物料时发生错误: {str(e)}")
     
 
     
@@ -1842,8 +2237,10 @@ class ItemEditor(QWidget):
                         has_selected = True
                         selected_count += 1
             
-            # 更新删除按钮状态
+            # 更新按钮状态
             self.delete_btn.setEnabled(has_selected)
+            self.batch_enable_btn.setEnabled(has_selected)
+            self.batch_disable_btn.setEnabled(has_selected)
             
             # 更新表头复选框状态 - 临时断开连接避免事件循环
             if hasattr(self, 'header_checkbox'):
@@ -1914,6 +2311,33 @@ class ItemEditor(QWidget):
         dialog = ItemImportDialog(self)
         if dialog.exec() == QDialog.Accepted:
             self.load_items()  # 刷新物料列表
+
+    def download_template(self):
+        """下载物料导入模板"""
+        try:
+            # 获取模板文件路径
+            template_path = get_resource_path("app/ui/materia_management.xlsx")
+            
+            # 检查模板文件是否存在
+            if not os.path.exists(template_path):
+                QMessageBox.warning(self, "警告", f"模板文件不存在！\n路径: {template_path}")
+                return
+            
+            # 选择保存位置
+            save_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "保存物料导入模板",
+                "物料导入模板.xlsx",
+                "Excel文件 (*.xlsx);;所有文件 (*)"
+            )
+            
+            if save_path:
+                # 复制模板文件到选择的位置
+                shutil.copy2(template_path, save_path)
+                QMessageBox.information(self, "成功", f"模板已保存到：\n{save_path}")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"下载模板失败: {str(e)}")
 
 
 class ItemImportDialog(QDialog):
@@ -2001,11 +2425,8 @@ class ItemImportDialog(QDialog):
         1. 支持Excel(.xlsx, .xls)和CSV文件格式
         2. 必需列：代码、名称、全名、规格型号
         3. 可选列：商品品牌（仅对成品有效）
-        4. 全名字段前4-5个字用于判断物料类型：
-           - 包含"原材料" → 原材料(RM)
-           - 包含"成品" → 成品(FG)  
-           - 包含"半成品" → 半成品(SFG)
-           - 包含"包装材料"或"包装材" → 包装材料(PKG)
+        4. "全名"字段用于判断物料类型，请固定填写以下选项：
+           - "原材料"  - "成品"  - "半成品"  - "包装材料"或"包装"
            - 其他 → 默认为原材料(RM)
         5. 商品品牌字段只有成品才会保存，其他类型物料会忽略该字段
         """

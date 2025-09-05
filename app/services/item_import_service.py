@@ -121,7 +121,8 @@ class ItemImportService:
             'SafetyStock': 0,  # 默认安全库存
             'Remark': f"通过导入创建，全名：{fullname}" if fullname else "通过导入创建",
             'Brand': brand,
-            'ParentItemId': None  # 导入时不设置上级物资
+            'ParentItemId': None,  # 导入时不设置上级物资
+            'IsActive': 1  # 导入时默认启用
         }
     
     @staticmethod

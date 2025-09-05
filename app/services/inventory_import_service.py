@@ -11,6 +11,21 @@ class InventoryImportService:
     """库存导入服务"""
     
     @staticmethod
+    def detect_file_encoding(file_path: str) -> str:
+        """检测文件编码"""
+        try:
+            import chardet
+            with open(file_path, 'rb') as f:
+                raw_data = f.read()
+                result = chardet.detect(raw_data)
+                return result['encoding']
+        except ImportError:
+            # 如果没有chardet库，使用默认编码
+            return 'utf-8'
+        except Exception:
+            return 'utf-8'
+    
+    @staticmethod
     def normalize_code(code: str) -> str:
         """标准化编码：去掉空格、连接符等"""
         if not code:
@@ -56,12 +71,12 @@ class InventoryImportService:
         return None
     
     @staticmethod
-    def import_inventory_from_excel(file_path: str, warehouse: str = "默认仓库") -> Tuple[bool, str, List[Dict]]:
+    def import_inventory_from_file(file_path: str, warehouse: str = "默认仓库") -> Tuple[bool, str, List[Dict]]:
         """
-        从Excel文件导入库存数据（支持重复物资累计计算）
+        从文件导入库存数据（支持Excel和CSV格式，支持重复物资累计计算）
         
         Args:
-            file_path: Excel文件路径
+            file_path: 文件路径（支持.xlsx、.xls、.csv格式）
             warehouse: 仓库名称
             
         Returns:
@@ -72,8 +87,47 @@ class InventoryImportService:
             accumulated_items: 累计计算的物资列表
         """
         try:
-            # 读取Excel文件
-            df = pd.read_excel(file_path, header=0)
+            # 根据文件扩展名选择读取方法
+            if file_path.lower().endswith('.csv'):
+                # 检测文件编码
+                detected_encoding = InventoryImportService.detect_file_encoding(file_path)
+                
+                # 尝试多种编码读取CSV文件
+                encodings = [detected_encoding, 'utf-8-sig', 'utf-8', 'gbk', 'gb2312', 'gb18030', 'big5']
+                # 去重并保持顺序
+                encodings = list(dict.fromkeys(encodings))
+                
+                df = None
+                used_encoding = None
+                
+                for encoding in encodings:
+                    if encoding is None:
+                        continue
+                    try:
+                        df = pd.read_csv(file_path, header=0, encoding=encoding)
+                        used_encoding = encoding
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                    except Exception as e:
+                        print(f"尝试编码 {encoding} 时出错: {e}")
+                        continue
+                
+                if df is None:
+                    detected_encoding = InventoryImportService.detect_file_encoding(file_path)
+                    error_msg = f"无法读取CSV文件。\n\n检测到的编码：{detected_encoding}\n\n可能的解决方案：\n1. 确保文件是有效的CSV格式\n2. 检查文件是否被其他程序占用\n3. 尝试用记事本打开文件，另存为UTF-8编码\n4. 如果文件包含中文，建议使用UTF-8编码保存"
+                    return False, error_msg, [], []
+                
+                # 检查数据是否为空
+                if df.empty:
+                    return False, "文件为空或没有有效数据", [], []
+                    
+            elif file_path.lower().endswith(('.xlsx', '.xls')):
+                # 读取Excel文件
+                df = pd.read_excel(file_path, header=0)
+                used_encoding = "Excel格式"
+            else:
+                return False, "不支持的文件格式，请使用CSV或Excel文件", [], []
             
             # 智能识别列
             item_code_column = None
@@ -87,7 +141,7 @@ class InventoryImportService:
                     break
             
             if not item_code_column:
-                return False, "Excel文件中未找到'物料代码'列", [], []
+                return False, "文件中未找到'物料代码'列", [], []
             
             # 查找规格型号列
             for col in df.columns:
@@ -102,13 +156,17 @@ class InventoryImportService:
                     break
             
             if not qty_column:
-                return False, "Excel文件中未找到'基本单位数量'列", [], []
+                return False, "文件中未找到'基本单位数量'列", [], []
             
             # 记录找到的列信息
             found_columns = f"找到列：物料代码({item_code_column})"
             if spec_column:
                 found_columns += f", 规格型号({spec_column})"
             found_columns += f", 数量({qty_column})"
+            
+            # 添加编码信息
+            if used_encoding:
+                found_columns += f" [文件编码：{used_encoding}]"
             
             # 预处理：收集所有有效数据并进行累计计算
             raw_data = []
@@ -122,6 +180,10 @@ class InventoryImportService:
                 # 获取数据
                 item_code = str(row.get(item_code_column, "")).strip()
                 item_spec = str(row.get(spec_column, "")).strip() if spec_column else None
+                
+                # 处理空规格型号
+                if item_spec and item_spec.lower() in ['nan', 'none', 'null', '']:
+                    item_spec = None
                 
                 try:
                     qty = float(row.get(qty_column, 0))
@@ -196,7 +258,7 @@ class InventoryImportService:
                                 matched_item["ItemId"], 
                                 warehouse, 
                                 data["qty"], 
-                                remark_prefix=f"Excel导入累计({current_qty}→{data['qty']})"
+                                remark_prefix=f"文件导入累计({current_qty}→{data['qty']})"
                             )
                         
                         # 生成消息
@@ -258,6 +320,39 @@ class InventoryImportService:
             
         except Exception as e:
             return False, f"导入过程中发生错误：{str(e)}", [], []
+    
+    @staticmethod
+    def import_inventory_from_excel(file_path: str, warehouse: str = "默认仓库") -> Tuple[bool, str, List[Dict]]:
+        """
+        从Excel文件导入库存数据（支持重复物资累计计算）
+        
+        Args:
+            file_path: Excel文件路径
+            warehouse: 仓库名称
+            
+        Returns:
+            (success, message, details, accumulated_items)
+            success: 是否成功
+            message: 结果消息
+            details: 详细结果列表，包含成功和失败的记录
+            accumulated_items: 累计计算的物资列表
+        """
+        return InventoryImportService.import_inventory_from_file(file_path, warehouse)
+    
+    @staticmethod
+    def get_item_type_display_name(item_type: str) -> str:
+        """获取物料类型的中文显示名称"""
+        type_mapping = {
+            'FG': '成品',
+            'SFG': '半成品', 
+            'RM': '原材料',
+            'PKG': '包装',
+            '成品': '成品',
+            '半成品': '半成品',
+            '原材料': '原材料',
+            '包装': '包装'
+        }
+        return type_mapping.get(item_type, item_type)
     
     @staticmethod
     def get_all_inventory_summary() -> List[Dict]:

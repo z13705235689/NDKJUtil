@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional, Tuple
 from app.db import query_all, query_one, execute, get_last_id
+from app.services.bom_history_service import BomHistoryService
 
 
 class BomService:
@@ -66,7 +67,7 @@ class BomService:
                     SELECT bh.*, i.ItemCode as ParentItemCode, i.CnName as ParentItemName
                     FROM BomHeaders bh
                     JOIN Items i ON bh.ParentItemId = i.ItemId
-                    WHERE bh.ParentItemId = ? AND bh.Rev = ?
+                    WHERE bh.ParentItemId = ? AND bh.Rev = ? AND bh.IsActive = 1
                 """
                 return query_one(sql, (parent_item_id, rev))
             else:
@@ -74,7 +75,7 @@ class BomService:
                     SELECT bh.*, i.ItemCode as ParentItemCode, i.CnName as ParentItemName
                     FROM BomHeaders bh
                     JOIN Items i ON bh.ParentItemId = i.ItemId
-                    WHERE bh.ParentItemId = ?
+                    WHERE bh.ParentItemId = ? AND bh.IsActive = 1
                     ORDER BY bh.Rev DESC
                     LIMIT 1
                 """
@@ -110,6 +111,8 @@ class BomService:
                 raise ValueError("版本号不能为空")
             if not bom_data.get('EffectiveDate'):
                 raise ValueError("生效日期不能为空")
+            if not bom_data.get('ParentItemId'):
+                raise ValueError("父产品不能为空")
             
             # 检查是否已存在相同BOM名称和版本
             existing = query_one(
@@ -132,6 +135,17 @@ class BomService:
                 bom_data.get('ExpireDate'),
                 bom_data.get('Remark', '')
             ))
+            
+            # 记录操作历史
+            BomHistoryService.log_operation(
+                bom_id=bom_id,
+                operation_type='CREATE',
+                operation_target='HEADER',
+                new_data=bom_data,
+                operation_user='系统',
+                operation_source='UI',
+                remark=f"创建BOM: {bom_data['BomName']}"
+            )
             
             return bom_id
             
@@ -168,6 +182,18 @@ class BomService:
                 line_data.get('ScrapFactor', 0)
             ))
             
+            # 记录操作历史
+            BomHistoryService.log_operation(
+                bom_id=bom_id,
+                operation_type='CREATE',
+                operation_target='LINE',
+                target_id=line_id,
+                new_data=line_data,
+                operation_user='系统',
+                operation_source='UI',
+                remark=f"添加零部件到BOM"
+            )
+            
             return line_id
             
         except Exception as e:
@@ -193,6 +219,43 @@ class BomService:
             if existing:
                 raise ValueError("该BOM名称的版本号已被其他BOM使用")
             
+            # 获取更新前的数据用于历史记录
+            old_bom_data = query_one("SELECT * FROM BomHeaders WHERE BomId = ?", (bom_id,))
+            old_data = dict(old_bom_data) if old_bom_data else None
+            
+            # 检查是否有字段变化
+            has_changes = False
+            if old_data:
+                # 比较关键字段
+                changes = []
+                if old_data.get('BomName') != bom_data['BomName']:
+                    changes.append(f"BOM名称: {old_data.get('BomName')} → {bom_data['BomName']}")
+                    has_changes = True
+                if old_data.get('ParentItemId') != bom_data.get('ParentItemId'):
+                    changes.append(f"父产品ID: {old_data.get('ParentItemId')} → {bom_data.get('ParentItemId')}")
+                    has_changes = True
+                if old_data.get('Rev') != bom_data['Rev']:
+                    changes.append(f"版本号: {old_data.get('Rev')} → {bom_data['Rev']}")
+                    has_changes = True
+                if old_data.get('EffectiveDate') != bom_data['EffectiveDate']:
+                    changes.append(f"生效日期: {old_data.get('EffectiveDate')} → {bom_data['EffectiveDate']}")
+                    has_changes = True
+                if old_data.get('ExpireDate') != bom_data.get('ExpireDate'):
+                    changes.append(f"失效日期: {old_data.get('ExpireDate')} → {bom_data.get('ExpireDate')}")
+                    has_changes = True
+                if old_data.get('Remark', '') != bom_data.get('Remark', ''):
+                    changes.append(f"备注: {old_data.get('Remark', '')} → {bom_data.get('Remark', '')}")
+                    has_changes = True
+                
+                # 如果没有变化，直接返回
+                if not has_changes:
+                    print(f"调试 - BOM主表无变化，跳过更新")
+                    return True
+                
+                print(f"调试 - BOM主表变化: {'; '.join(changes)}")
+            else:
+                has_changes = True
+            
             # 更新BOM主表
             sql = """
                 UPDATE BomHeaders 
@@ -209,6 +272,19 @@ class BomService:
                 bom_id
             ))
             
+            # 记录更新历史（只有变化时才记录）
+            if has_changes:
+                BomHistoryService.log_operation(
+                    bom_id=bom_id,
+                    operation_type='UPDATE',
+                    operation_target='HEADER',
+                    old_data=old_data,
+                    new_data=bom_data,
+                    operation_user='系统',
+                    operation_source='UI',
+                    remark=f"编辑BOM: {bom_data['BomName']}"
+                )
+            
             return True
             
         except Exception as e:
@@ -224,6 +300,37 @@ class BomService:
             if not line_data.get('QtyPer'):
                 raise ValueError("用量不能为空")
             
+            # 获取更新前的数据用于历史记录
+            old_line_data = query_one("SELECT * FROM BomLines WHERE LineId = ?", (line_id,))
+            old_data = dict(old_line_data) if old_line_data else None
+            
+            # 获取BOM ID用于历史记录
+            bom_id = old_line_data['BomId'] if old_line_data else None
+            
+            # 检查是否有字段变化
+            has_changes = False
+            if old_data:
+                # 比较关键字段
+                changes = []
+                if old_data.get('ChildItemId') != line_data['ChildItemId']:
+                    changes.append(f"子物料ID: {old_data.get('ChildItemId')} → {line_data['ChildItemId']}")
+                    has_changes = True
+                if old_data.get('QtyPer', 0) != line_data['QtyPer']:
+                    changes.append(f"用量: {old_data.get('QtyPer', 0)} → {line_data['QtyPer']}")
+                    has_changes = True
+                if old_data.get('ScrapFactor', 0) != line_data.get('ScrapFactor', 0):
+                    changes.append(f"损耗率: {old_data.get('ScrapFactor', 0)} → {line_data.get('ScrapFactor', 0)}")
+                    has_changes = True
+                
+                # 如果没有变化，直接返回
+                if not has_changes:
+                    print(f"调试 - BOM明细无变化，跳过更新")
+                    return True
+                
+                print(f"调试 - BOM明细变化: {'; '.join(changes)}")
+            else:
+                has_changes = True
+            
             # 更新BOM明细
             sql = """
                 UPDATE BomLines 
@@ -237,6 +344,20 @@ class BomService:
                 line_id
             ))
             
+            # 记录更新历史（只有变化时才记录）
+            if bom_id and has_changes:
+                BomHistoryService.log_operation(
+                    bom_id=bom_id,
+                    operation_type='UPDATE',
+                    operation_target='LINE',
+                    target_id=line_id,
+                    old_data=old_data,
+                    new_data=line_data,
+                    operation_user='系统',
+                    operation_source='UI',
+                    remark=f"编辑BOM明细"
+                )
+            
             return True
             
         except Exception as e:
@@ -246,6 +367,38 @@ class BomService:
     def delete_bom_header(bom_id: int) -> bool:
         """删除BOM主表（会级联删除明细）"""
         try:
+            # 获取删除前的数据用于历史记录
+            old_bom_data = query_one("SELECT * FROM BomHeaders WHERE BomId = ?", (bom_id,))
+            old_data = dict(old_bom_data) if old_bom_data else None
+            
+            # 获取BOM明细数据用于历史记录
+            old_lines_data = query_all("SELECT * FROM BomLines WHERE BomId = ?", (bom_id,))
+            old_lines = [dict(line) for line in old_lines_data] if old_lines_data else []
+            
+            # 记录BOM明细删除历史（在删除前记录）
+            for line in old_lines:
+                BomHistoryService.log_operation(
+                    bom_id=bom_id,
+                    operation_type='DELETE',
+                    operation_target='LINE',
+                    target_id=line['LineId'],
+                    old_data=line,
+                    operation_user='系统',
+                    operation_source='UI',
+                    remark=f"删除BOM时删除明细"
+                )
+            
+            # 记录BOM主表删除历史
+            BomHistoryService.log_operation(
+                bom_id=bom_id,
+                operation_type='DELETE',
+                operation_target='HEADER',
+                old_data=old_data,
+                operation_user='系统',
+                operation_source='UI',
+                remark=f"删除BOM: {old_data.get('BomName', '') if old_data else ''}"
+            )
+            
             # 删除BOM主表（明细会通过外键约束自动删除）
             execute("DELETE FROM BomHeaders WHERE BomId = ?", (bom_id,))
             return True
@@ -257,12 +410,134 @@ class BomService:
     def delete_bom_line(line_id: int) -> bool:
         """删除BOM明细"""
         try:
+            # 获取删除前的数据用于历史记录
+            old_line_data = query_one("SELECT * FROM BomLines WHERE LineId = ?", (line_id,))
+            old_data = dict(old_line_data) if old_line_data else None
+            
+            # 获取BOM ID用于历史记录
+            bom_id = old_line_data['BomId'] if old_line_data else None
+            
+            # 记录删除历史
+            if bom_id and old_data:
+                BomHistoryService.log_operation(
+                    bom_id=bom_id,
+                    operation_type='DELETE',
+                    operation_target='LINE',
+                    target_id=line_id,
+                    old_data=old_data,
+                    operation_user='系统',
+                    operation_source='UI',
+                    remark=f"删除BOM明细"
+                )
+            
             execute("DELETE FROM BomLines WHERE LineId = ?", (line_id,))
             return True
             
         except Exception as e:
             raise Exception(f"删除BOM明细失败: {str(e)}")
     
+    @staticmethod
+    def get_bom_status(bom_id: int) -> str:
+        """
+        获取BOM状态
+        返回: '有效' 或 '失效'
+        """
+        try:
+            # 获取BOM信息
+            bom = query_one("SELECT * FROM BomHeaders WHERE BomId = ?", (bom_id,))
+            if not bom:
+                return '未知'
+            
+            bom = dict(bom)
+            
+            # 检查父产品状态
+            parent_item = query_one("SELECT IsActive FROM Items WHERE ItemId = ?", (bom.get('ParentItemId'),))
+            if not parent_item or parent_item['IsActive'] != 1:
+                return '失效'
+            
+            # 检查所有零部件状态
+            bom_lines = query_all("""
+                SELECT i.IsActive 
+                FROM BomLines bl 
+                JOIN Items i ON bl.ChildItemId = i.ItemId 
+                WHERE bl.BomId = ?
+            """, (bom_id,))
+            
+            for line in bom_lines:
+                if line['IsActive'] != 1:
+                    return '失效'
+            
+            return '有效'
+            
+        except Exception as e:
+            print(f"获取BOM状态失败: {str(e)}")
+            return '未知'
+    
+    @staticmethod
+    def get_bom_status_details(bom_id: int) -> Dict:
+        """
+        获取BOM状态详细信息
+        返回: {
+            'status': '有效'/'失效',
+            'parent_status': '启用'/'禁用',
+            'disabled_components': [{'name': 'xxx', 'code': 'xxx'}]
+        }
+        """
+        try:
+            # 获取BOM信息
+            bom = query_one("SELECT * FROM BomHeaders WHERE BomId = ?", (bom_id,))
+            if not bom:
+                return {'status': '未知', 'parent_status': '未知', 'disabled_components': []}
+            
+            bom = dict(bom)
+            disabled_components = []
+            
+            # 检查父产品状态
+            parent_item = query_one("""
+                SELECT IsActive, CnName, ItemCode 
+                FROM Items 
+                WHERE ItemId = ?
+            """, (bom.get('ParentItemId'),))
+            
+            parent_status = '未知'
+            if parent_item:
+                parent_status = '启用' if parent_item['IsActive'] == 1 else '禁用'
+                if parent_item['IsActive'] != 1:
+                    disabled_components.append({
+                        'name': parent_item['CnName'],
+                        'code': parent_item['ItemCode'],
+                        'type': '父产品'
+                    })
+            
+            # 检查所有零部件状态
+            bom_lines = query_all("""
+                SELECT i.IsActive, i.CnName, i.ItemCode 
+                FROM BomLines bl 
+                JOIN Items i ON bl.ChildItemId = i.ItemId 
+                WHERE bl.BomId = ?
+            """, (bom_id,))
+            
+            for line in bom_lines:
+                if line['IsActive'] != 1:
+                    disabled_components.append({
+                        'name': line['CnName'],
+                        'code': line['ItemCode'],
+                        'type': '零部件'
+                    })
+            
+            # 确定整体状态
+            status = '有效' if parent_status == '启用' and len(disabled_components) == 0 else '失效'
+            
+            return {
+                'status': status,
+                'parent_status': parent_status,
+                'disabled_components': disabled_components
+            }
+            
+        except Exception as e:
+            print(f"获取BOM状态详情失败: {str(e)}")
+            return {'status': '未知', 'parent_status': '未知', 'disabled_components': []}
+
     @staticmethod
     def expand_bom(parent_item_id: int, qty: float, rev: str = None) -> List[Dict]:
         """展开BOM结构"""

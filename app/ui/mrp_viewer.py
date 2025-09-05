@@ -3,9 +3,9 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
     QTableWidgetItem, QDateEdit, QLabel, QComboBox, QGroupBox,
     QMessageBox, QHeaderView, QTabWidget, QLineEdit, QCheckBox,
-    QFileDialog
+    QFileDialog, QProgressBar
 )
-from PySide6.QtCore import Qt, QDate, QThread, Signal
+from PySide6.QtCore import Qt, QDate, QThread, Signal, QTimer
 from PySide6.QtGui import QFont, QColor, QBrush
 
 from app.services.mrp_service import MRPService
@@ -17,15 +17,16 @@ from openpyxl.utils import get_column_letter
 class MRPCalcThread(QThread):
     finished = Signal(dict)
     failed = Signal(str)
+    progress = Signal(int, str)  # 进度百分比和状态文本
 
     def __init__(self, start_date: str, end_date: str, import_id: Optional[int] = None, 
-                  search_filter: Optional[str] = None, calc_type: str = "child"):
+                  search_filter: Optional[str] = None, calc_type: str = "comprehensive"):
         super().__init__()
         self.start_date = start_date
         self.end_date = end_date
         self.import_id = import_id
         self.search_filter = search_filter
-        self.calc_type = calc_type  # "child" 或 "parent"
+        self.calc_type = calc_type  # "child", "parent", 或 "comprehensive"
 
     def run(self):
         try:
@@ -34,22 +35,37 @@ class MRPCalcThread(QThread):
             print(f"🔄 [MRPCalcThread] 参数：import_id={self.import_id}, search_filter={self.search_filter}")
             print(f"🔄 [MRPCalcThread] 计算类型：{self.calc_type}")
             
+            self.progress.emit(10, "正在初始化计算参数...")
+            
             if self.calc_type == "child":
                 # 计算零部件MRP
                 print(f"🔄 [MRPCalcThread] 调用 calculate_mrp_kanban")
+                self.progress.emit(30, "正在计算零部件MRP...")
                 data = MRPService.calculate_mrp_kanban(
                     self.start_date, self.end_date, 
                     self.import_id, self.search_filter
                 )
-            else:
+            elif self.calc_type == "parent":
                 # 计算成品MRP
                 print(f"[MRPCalcThread] 调用 calculate_parent_mrp_kanban")
+                self.progress.emit(30, "正在计算成品MRP...")
                 data = MRPService.calculate_parent_mrp_kanban(
                     self.start_date, self.end_date, 
                     self.import_id, self.search_filter
                 )
+            else:
+                # 计算综合MRP
+                print(f"[MRPCalcThread] 调用 calculate_comprehensive_mrp_kanban")
+                self.progress.emit(30, "正在计算综合MRP...")
+                data = MRPService.calculate_comprehensive_mrp_kanban(
+                    self.start_date, self.end_date, 
+                    self.import_id, self.search_filter
+                )
             
+            self.progress.emit(80, "正在处理计算结果...")
             print(f"[MRPCalcThread] 计算完成，返回数据：weeks={len(data.get('weeks', []))}, rows={len(data.get('rows', []))}")
+            
+            self.progress.emit(100, "计算完成！")
             self.finished.emit(data)
         except Exception as e:
             print(f"[MRPCalcThread] 计算失败：{str(e)}")
@@ -203,12 +219,12 @@ class MRPViewer(QWidget):
         # 计算类型选择
         calc_layout.addWidget(QLabel("计算类型:"))
         self.calc_type_combo = QComboBox()
-        self.calc_type_combo.addItems(["零部件MRP", "成品MRP"])
-        self.calc_type_combo.setCurrentText("零部件MRP")
+        self.calc_type_combo.addItems(["综合MRP", "零部件MRP", "成品MRP"])
+        self.calc_type_combo.setCurrentText("综合MRP")
         calc_layout.addWidget(self.calc_type_combo)
         
         # 说明标签
-        type_desc_label = QLabel("零部件MRP：展开BOM计算原材料需求；成品MRP：直接显示成品需求")
+        type_desc_label = QLabel("综合MRP：结合成品库存和零部件库存计算；零部件MRP：展开BOM计算原材料需求；成品MRP：直接显示成品需求")
         type_desc_label.setStyleSheet("color: #666; font-size: 11px;")
         calc_layout.addWidget(type_desc_label)
         
@@ -235,6 +251,23 @@ class MRPViewer(QWidget):
         """)
         self.btn_calc.clicked.connect(self.on_calc)
         calc_layout.addWidget(self.btn_calc)
+        
+        # 进度条
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #dee2e6;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #f8f9fa;
+            }
+            QProgressBar::chunk {
+                background-color: #007bff;
+                border-radius: 3px;
+            }
+        """)
+        calc_layout.addWidget(self.progress_bar)
         
         # 导出Excel按钮
         self.btn_export = QPushButton("导出Excel")
@@ -268,6 +301,7 @@ class MRPViewer(QWidget):
         self.tbl.verticalHeader().setVisible(False)
         self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tbl.setSelectionMode(QTableWidget.NoSelection)
         hdr = self.tbl.horizontalHeader()
         hdr.setSectionResizeMode(QHeaderView.ResizeToContents)
         hdr.setStretchLastSection(True)
@@ -276,9 +310,17 @@ class MRPViewer(QWidget):
         self.tbl.setStyleSheet("""
             QTableWidget {
                 gridline-color: #dee2e6;
-                background-color: white;
-                alternate-background-color: #f8f9fa;
-                selection-background-color: #e3f2fd;
+                background-color: transparent;
+                alternate-background-color: transparent;
+                selection-background-color: transparent;
+            }
+            QTableWidget::item:selected {
+                background-color: transparent !important;
+                border: 2px solid #007bff;
+                border-radius: 2px;
+            }
+            QTableWidget::item:selected:focus {
+                background-color: transparent !important;
             }
             QHeaderView::section {
                 background-color: #f8f9fa;
@@ -383,11 +425,23 @@ class MRPViewer(QWidget):
         print(f"🔘 [on_calc] 搜索条件：{search_filter}")
         
         # 获取计算类型
-        calc_type = "child" if self.calc_type_combo.currentText() == "零部件MRP" else "parent"
+        calc_type_text = self.calc_type_combo.currentText()
+        if calc_type_text == "零部件MRP":
+            calc_type = "child"
+        elif calc_type_text == "成品MRP":
+            calc_type = "parent"
+        else:  # 综合MRP
+            calc_type = "comprehensive"
         print(f"🔘 [on_calc] 计算类型：{calc_type}")
         
         self.btn_calc.setEnabled(False)
         self.btn_export.setEnabled(False)  # 禁用导出按钮
+        
+        # 显示进度条
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFormat("准备开始计算...")
+        
         self.tbl.clear()
         
         # 显示计算状态
@@ -399,11 +453,21 @@ class MRPViewer(QWidget):
         self._thread = MRPCalcThread(s, e, import_id, search_filter, calc_type)
         self._thread.finished.connect(self.render_board)
         self._thread.failed.connect(self.show_error)
+        self._thread.progress.connect(self.on_progress_update)
         self._thread.start()
+
+    def on_progress_update(self, progress: int, status: str):
+        """更新进度条"""
+        self.progress_bar.setValue(progress)
+        self.progress_bar.setFormat(f"{status} ({progress}%)")
+        if progress == 100:
+            # 计算完成后隐藏进度条
+            QTimer.singleShot(1000, lambda: self.progress_bar.setVisible(False))
 
     def show_error(self, msg: str):
         print(f"❌ [show_error] 显示错误：{msg}")
         self.btn_calc.setEnabled(True)
+        self.progress_bar.setVisible(False)  # 出错时隐藏进度条
         QMessageBox.critical(self, "错误", msg)
 
     def on_search_changed(self):
@@ -425,6 +489,9 @@ class MRPViewer(QWidget):
     def render_board(self, data: dict):
         print(f"🎨 [render_board] 开始渲染MRP看板")
         print(f"🎨 [render_board] 接收数据：{data}")
+        
+        # 隐藏进度条
+        self.progress_bar.setVisible(False)
         
         self.btn_calc.setEnabled(True)
         self.btn_export.setEnabled(True)  # 启用导出按钮
@@ -462,9 +529,12 @@ class MRPViewer(QWidget):
         if calc_type == "零部件MRP":
             # 零部件MRP：物料名称、规格、类型、行别、期初库存、各周、合计
             fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
-        else:
+        elif calc_type == "成品MRP":
             # 成品MRP：物料名称、规格、类型、行别、期初库存、各周、合计
             fixed_headers = ["物料名称", "物料规格", "成品类型", "行别", "期初库存"]
+        else:  # 综合MRP
+            # 综合MRP：物料名称、规格、类型、行别、期初库存、各周、合计
+            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
         
         # 设置列数和标题
         headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
@@ -542,7 +612,15 @@ class MRPViewer(QWidget):
             self._set_item(actual_row, 1, row.get("ItemSpec", ""))
             self._set_item(actual_row, 2, row.get("ItemType", ""))
             self._set_item(actual_row, 3, row.get("RowType", ""))
-            self._set_item(actual_row, 4, self._fmt(row.get("StartOnHand", 0)))
+            
+            # 期初库存列：综合MRP显示"XXX+XXX"格式，其他显示数字
+            start_onhand = row.get("StartOnHand", 0)
+            if isinstance(start_onhand, str) and "+" in start_onhand:
+                # 综合MRP的"XXX+XXX"格式，直接显示
+                self._set_item(actual_row, 4, start_onhand)
+            else:
+                # 其他类型，格式化为数字
+                self._set_item(actual_row, 4, self._fmt(start_onhand))
 
             # 基本信息列不设置背景色
 
@@ -681,10 +759,53 @@ class MRPViewer(QWidget):
         return f"{v:,.3f}"
 
     def _build_week_columns_with_totals(self, weeks: list) -> list:
-        """构建周列和年份合计列"""
+        """构建周列和年份合计列，参考客户订单处理页面的逻辑"""
         from collections import defaultdict
         from datetime import datetime, timedelta
         
+        # 如果有当前数据，使用实际的订单日期来分组
+        if hasattr(self, '_current_data') and self._current_data:
+            # 获取订单版本ID
+            import_id = self.order_version_combo.currentData()
+            
+            if import_id is not None:
+                # 获取该订单版本的所有唯一订单日期
+                from app.db import query_all
+                sql = """
+                SELECT DISTINCT col.DeliveryDate
+                FROM CustomerOrderLines col
+                JOIN CustomerOrders co ON col.OrderId = co.OrderId
+                WHERE co.ImportId = ? AND col.LineStatus = 'Active' AND col.DeliveryDate IS NOT NULL
+                ORDER BY col.DeliveryDate
+                """
+                rows = query_all(sql, (import_id,))
+                
+                # 按年份分组实际的订单日期
+                by_year = defaultdict(list)
+                for row in rows:
+                    try:
+                        date_obj = datetime.strptime(row["DeliveryDate"], "%Y-%m-%d").date()
+                        by_year[date_obj.isocalendar()[0]].append(date_obj)
+                    except:
+                        continue
+                
+                # 对每年的日期排序
+                for y in by_year:
+                    by_year[y].sort()
+                
+                # 构建列规范
+                colspec = []
+                years = sorted(by_year.keys())
+                for year in years:
+                    # 为每年的每个日期创建列
+                    for d in by_year[year]:
+                        colspec.append(("week", f"CW{d.isocalendar()[1]:02d}"))
+                    # 添加年份合计列
+                    colspec.append(("total", year))
+                
+                return colspec
+        
+        # 如果没有订单数据，使用默认逻辑
         # 按年份分组
         by_year = defaultdict(list)
         
@@ -725,9 +846,39 @@ class MRPViewer(QWidget):
         return colspec
 
     def _get_weeks_in_year(self, year: int) -> list:
-        """获取指定年份的所有周"""
+        """获取指定年份的所有周，参考客户订单处理页面的逻辑"""
         from collections import defaultdict
         
+        # 如果有当前数据，使用实际的订单日期来分组
+        if hasattr(self, '_current_data') and self._current_data:
+            # 获取订单版本ID
+            import_id = self.order_version_combo.currentData()
+            
+            if import_id is not None:
+                # 获取该订单版本的所有唯一订单日期
+                from app.db import query_all
+                sql = """
+                SELECT DISTINCT col.DeliveryDate
+                FROM CustomerOrderLines col
+                JOIN CustomerOrders co ON col.OrderId = co.OrderId
+                WHERE co.ImportId = ? AND col.LineStatus = 'Active' AND col.DeliveryDate IS NOT NULL
+                ORDER BY col.DeliveryDate
+                """
+                rows = query_all(sql, (import_id,))
+                
+                # 按年份分组实际的订单日期
+                by_year = defaultdict(list)
+                for row in rows:
+                    try:
+                        from datetime import datetime
+                        date_obj = datetime.strptime(row["DeliveryDate"], "%Y-%m-%d").date()
+                        by_year[date_obj.isocalendar()[0]].append(f"CW{date_obj.isocalendar()[1]:02d}")
+                    except:
+                        continue
+                
+                return by_year.get(year, [])
+        
+        # 如果没有订单数据，使用默认逻辑
         # 从当前数据中获取该年份的所有周
         if hasattr(self, '_current_data'):
             weeks = self._current_data.get("weeks", [])
@@ -760,18 +911,66 @@ class MRPViewer(QWidget):
         return []
 
     def _convert_cw_to_date(self, cw: str) -> str:
-        """将CW格式转换为对应的日期字符串"""
+        """将CW格式转换为对应的日期字符串，基于实际的订单日期"""
         try:
             # 从CW中提取周数
             if cw.startswith("CW"):
                 week_num = int(cw[2:])
                 
-                # 获取当前年份
-                current_year = QDate.currentDate().year()
+                # 如果有当前数据，尝试从实际的订单日期中找到对应的日期
+                if hasattr(self, '_current_data') and self._current_data:
+                    # 获取订单版本ID
+                    import_id = self.order_version_combo.currentData()
+                    
+                    if import_id is not None:
+                        # 获取该订单版本的所有唯一订单日期
+                        from app.db import query_all
+                        sql = """
+                        SELECT DISTINCT col.DeliveryDate
+                        FROM CustomerOrderLines col
+                        JOIN CustomerOrders co ON col.OrderId = co.OrderId
+                        WHERE co.ImportId = ? AND col.LineStatus = 'Active' AND col.DeliveryDate IS NOT NULL
+                        ORDER BY col.DeliveryDate
+                        """
+                        rows = query_all(sql, (import_id,))
+                        
+                        # 找到对应周数的日期
+                        for row in rows:
+                            try:
+                                from datetime import datetime
+                                date_obj = datetime.strptime(row["DeliveryDate"], "%Y-%m-%d").date()
+                                if date_obj.isocalendar()[1] == week_num:
+                                    return date_obj.strftime("%Y/%m/%d")
+                            except:
+                                continue
+                
+                # 如果没有找到对应的订单日期，使用默认计算
+                # 获取开始日期和结束日期来确定年份范围
+                start_date = self.dt_start.date()
+                end_date = self.dt_end.date()
+                
+                # 从日期范围推断年份
+                start_year = start_date.year()
+                end_year = end_date.year()
+                
+                # 如果跨年，需要根据CW的实际日期来分组
+                if start_year == end_year:
+                    # 同一年，使用开始年份
+                    target_year = start_year
+                else:
+                    # 跨年，需要根据CW的实际日期来分组
+                    # 这里简化处理，按CW的顺序分组
+                    # 假设前半部分属于开始年份，后半部分属于结束年份
+                    weeks = self._current_data.get("weeks", []) if hasattr(self, '_current_data') else []
+                    mid_point = len(weeks) // 2
+                    cw_index = weeks.index(cw) if cw in weeks else 0
+                    if cw_index < mid_point:
+                        target_year = start_year
+                    else:
+                        target_year = end_year
                 
                 # 计算该年的第week_num周的第一天
-                # 使用QDate的fromString和addDays来计算
-                jan1 = QDate(current_year, 1, 1)
+                jan1 = QDate(target_year, 1, 1)
                 
                 # 找到该年第一个周一
                 days_to_monday = (8 - jan1.dayOfWeek()) % 7
@@ -854,8 +1053,10 @@ class MRPViewer(QWidget):
         # 设置列标题
         if calc_type == "零部件MRP":
             fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
-        else:
+        elif calc_type == "成品MRP":
             fixed_headers = ["物料名称", "物料规格", "成品类型", "行别", "期初库存"]
+        else:  # 综合MRP
+            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
         
         headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
         
@@ -917,12 +1118,20 @@ class MRPViewer(QWidget):
             row_num += 1
             
             # 基本信息列
+            start_onhand = row_data.get("StartOnHand", 0)
+            if isinstance(start_onhand, str) and "+" in start_onhand:
+                # 综合MRP的"XXX+XXX"格式，直接显示
+                start_onhand_display = start_onhand
+            else:
+                # 其他类型，格式化为数字
+                start_onhand_display = self._fmt(start_onhand)
+            
             basic_info = [
                 row_data.get("ItemName", ""),
                 row_data.get("ItemSpec", ""),
                 row_data.get("ItemType", ""),
                 row_data.get("RowType", ""),
-                self._fmt(row_data.get("StartOnHand", 0))
+                start_onhand_display
             ]
             
             for col, value in enumerate(basic_info, 1):

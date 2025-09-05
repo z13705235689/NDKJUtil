@@ -142,6 +142,22 @@ CREATE TABLE IF NOT EXISTS BomLines (
     UNIQUE(BomId, ChildItemId)
 );
 
+-- BOM操作历史表
+CREATE TABLE IF NOT EXISTS BomOperationHistory (
+    HistoryId INTEGER PRIMARY KEY AUTOINCREMENT,
+    BomId INTEGER NOT NULL,
+    OperationType TEXT NOT NULL,  -- CREATE, UPDATE, DELETE, IMPORT
+    OperationTarget TEXT NOT NULL,  -- HEADER, LINE
+    TargetId INTEGER,  -- BomLineId (如果是LINE操作)
+    OldData TEXT,  -- 操作前的数据(JSON格式)
+    NewData TEXT,  -- 操作后的数据(JSON格式)
+    OperationUser TEXT,  -- 操作用户
+    OperationSource TEXT,  -- 操作来源: UI, IMPORT, API等
+    Remark TEXT,  -- 备注
+    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (BomId) REFERENCES BomHeaders(BomId) ON DELETE CASCADE
+);
+
 -- 客户信息表
 CREATE TABLE IF NOT EXISTS Customers (
     CustomerId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -388,6 +404,9 @@ CREATE INDEX IF NOT EXISTS idx_routing_lines_routing ON RoutingLines(RoutingId);
 CREATE INDEX IF NOT EXISTS idx_bomheaders_parentitem ON BomHeaders(ParentItemId);
 CREATE INDEX IF NOT EXISTS idx_bomlines_bomid ON BomLines(BomId);
 CREATE INDEX IF NOT EXISTS idx_bomlines_childitem ON BomLines(ChildItemId);
+CREATE INDEX IF NOT EXISTS idx_bomhistory_bomid ON BomOperationHistory(BomId);
+CREATE INDEX IF NOT EXISTS idx_bomhistory_operation ON BomOperationHistory(OperationType);
+CREATE INDEX IF NOT EXISTS idx_bomhistory_date ON BomOperationHistory(CreatedDate);
 CREATE INDEX IF NOT EXISTS idx_customers_code ON Customers(CustomerCode);
 CREATE INDEX IF NOT EXISTS idx_salesorders_customer ON SalesOrders(CustomerId);
 CREATE INDEX IF NOT EXISTS idx_salesorders_startdate ON SalesOrders(StartDate);

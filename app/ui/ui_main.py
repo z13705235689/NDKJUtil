@@ -108,7 +108,7 @@ class Sidebar(QFrame):
         logo_layout.setSpacing(3)
         
         # 系统标题
-        title_label = QLabel("牛大MRP生产管理")
+        title_label = QLabel("MRP生产管理")
         title_label.setStyleSheet("""
             QLabel {
                 color: white;
@@ -169,9 +169,9 @@ class Sidebar(QFrame):
             nav_layout.addWidget(btn)
             self.nav_buttons.append(btn)
         
-        # 默认选中第一个
+        # 默认选中物料管理
         if self.nav_buttons:
-            self.nav_buttons[0].setChecked(True)
+            self.nav_buttons[0].setChecked(True)  # 物料管理是第一个按钮
         
         # 添加弹性空间
         nav_layout.addStretch()
@@ -258,7 +258,7 @@ class ContentArea(QFrame):
         welcome_layout.setSpacing(20)  # 减小间距
         
         # 欢迎标题 - 减小字体
-        welcome_title = QLabel("牛大MRP生产管理系统")
+        welcome_title = QLabel("MRP生产管理系统")
         welcome_title.setStyleSheet("""
             QLabel {
                 color: #262626;
@@ -347,6 +347,9 @@ class ContentArea(QFrame):
         # 替换为堆叠窗口
         layout.removeWidget(welcome_frame)
         layout.addWidget(self.stacked_widget)
+        
+        # 默认显示物料管理页面
+        self.stacked_widget.setCurrentIndex(1)
     
     def create_feature_card(self, icon, title, desc):
         """创建功能特性卡片"""
@@ -530,7 +533,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("牛大MRP生产管理")
+        self.setWindowTitle("MRP生产管理")
         self.setMinimumSize(1000, 700)  # 调整最小尺寸
         self.resize(1200, 800)  # 调整默认窗口大小
         self.setStyleSheet("""
@@ -589,7 +592,7 @@ class MainWindow(QMainWindow):
         elif "数据库管理" in page_name:
             self.content_area.switch_to_page(6)  # 数据库管理页面
         else:
-            self.content_area.switch_to_page(0)  # 默认欢迎页面
+            self.content_area.switch_to_page(1)  # 默认物料管理页面
     
 
 
@@ -598,22 +601,25 @@ def main():
     app = QApplication(sys.argv)
     
     # 设置应用程序信息
-    app.setApplicationName("牛大MRP生产管理")
+    app.setApplicationName("MRP生产管理")
     app.setApplicationVersion("2.1.0")
-    app.setOrganizationName("Niuda Technology")
     
-    # 初始化数据库
+    # 数据库已在 app.db 中全局初始化
     try:
-        from app.db import DatabaseManager
-        db_manager = DatabaseManager()
-        print("数据库初始化成功")
+        from app.db import db_manager
+        print("数据库连接成功")
     except Exception as e:
-        print(f"数据库初始化失败: {e}")
+        print(f"数据库连接失败: {e}")
         return
     
     # 创建主窗口
     window = MainWindow()
     window.show()
+    
+    # 注册应用程序退出时的清理函数
+    import atexit
+    from app.db import cleanup_database
+    atexit.register(cleanup_database)
     
     sys.exit(app.exec())
 

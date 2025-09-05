@@ -57,26 +57,39 @@ def _get(line: dict, *names, default=None):
 def _week_start(d: _date) -> _date:
     return d - timedelta(days=d.weekday())
 
-def _build_week_cols(min_d: _date, max_d: _date) -> Tuple[List[Tuple[str, _date|int]], Dict[int, List[_date]], List[int]]:
-    """根据起止日期构造连续周列以及每年的周分组，并在每年后追加“合计”列。"""
+def _build_week_cols(min_d: _date, max_d: _date, order_dates: List[_date] = None) -> Tuple[List[Tuple[str, _date|int]], Dict[int, List[_date]], List[int]]:
+    """根据起止日期构造连续周列以及每年的周分组，并在每年后追加"合计"列。"""
     if not (min_d and max_d):
         return [], {}, []
-    start = _week_start(min_d)
-    end   = _week_start(max_d)
-    weeks = []
-    cur = start
-    while cur <= end:
-        weeks.append(cur)
-        cur += timedelta(days=7)
+    
+    # 如果有订单日期，使用订单中的唯一日期；否则使用日期范围内的所有日期
+    if order_dates:
+        dates = sorted(set(order_dates))  # 去重并排序
+    else:
+        dates = []
+        cur = min_d
+        while cur <= max_d:
+            dates.append(cur)
+            cur += timedelta(days=1)
+    
+    # 按年分组
     by_year = defaultdict(list)
-    for w in weeks:
-        by_year[w.isocalendar()[0]].append(w)
+    for d in dates:
+        by_year[d.isocalendar()[0]].append(d)
+    
+    # 对每年的日期排序
+    for y in by_year:
+        by_year[y].sort()
+    
     years = sorted(by_year.keys())
     colspec: List[Tuple[str, _date|int]] = []
+    
     for y in years:
-        for w in by_year[y]:
-            colspec.append(("week", w))
+        # 为每年的每个日期创建列
+        for d in by_year[y]:
+            colspec.append(("date", d))
         colspec.append(("sum", y))
+    
     return colspec, by_year, years
 
 
@@ -87,33 +100,68 @@ class TwoRowHeader(QHeaderView):
         self.setDefaultAlignment(Qt.AlignCenter)
         self._top_font = QFont(); self._top_font.setBold(True)
         self._bottom_font = QFont()
+        self._bottom_font.setPointSize(self._bottom_font.pointSize() - 1.5)  # 日期字体更小
+        self._bottom_font.setBold(True)  # 日期字体加粗
         h = self.fontMetrics().height()
-        self.setFixedHeight(int(h * 2.4))
+        self.setFixedHeight(int(h * 3.0))  # 进一步增加高度
 
     def sizeHint(self):
         s = super().sizeHint()
         h = self.fontMetrics().height()
-        s.setHeight(int(h * 2.4))
+        s.setHeight(int(h * 3.0))  # 与setFixedHeight保持一致
         return s
 
     def paintSection(self, painter: QPainter, rect: QRect, logicalIndex: int):
         if not rect.isValid():
             return
-        super().paintSection(painter, rect, logicalIndex)
-
+        
+        # 完全自定义绘制，不使用父类方法
+        painter.save()
+        
+        # 绘制背景
+        painter.fillRect(rect, QColor("#fafafa"))
+        
+        # 绘制边框
+        painter.setPen(QColor("#d9d9d9"))
+        painter.drawRect(rect)
+        
         table = self.parent()
         item = table.horizontalHeaderItem(logicalIndex) if table else None
         top = item.text() if item else ""
         bottom = item.data(Qt.UserRole) if (item and item.data(Qt.UserRole) is not None) else ""
 
-        painter.save()
+        # 调试信息
+        if bottom and "CW" in top:
+            print(f"DEBUG: 绘制表头 - 列{logicalIndex}: '{top}' / '{bottom}', 矩形: {rect}")
+
+        # 计算两行的矩形区域
+        top_height = rect.height() // 2
+        bottom_height = rect.height() - top_height
+        
+        # 绘制第一行（CW编号）
         painter.setPen(QColor("#333333"))
         painter.setFont(self._top_font)
-        topRect = QRect(rect.left(), rect.top() + 2, rect.width(), rect.height() // 2)
+        topRect = QRect(rect.left() + 1, rect.top() + 1, rect.width() - 2, top_height - 2)
         painter.drawText(topRect, Qt.AlignCenter, str(top))
-        painter.setFont(self._bottom_font)
-        bottomRect = QRect(rect.left(), rect.top() + rect.height() // 2 - 2, rect.width(), rect.height() // 2)
-        painter.drawText(bottomRect, Qt.AlignCenter, str(bottom))
+        
+        # 绘制第二行（日期）
+        if bottom:  # 只有当有日期数据时才绘制
+            painter.setFont(self._bottom_font)
+            painter.setPen(QColor("#666666"))  # 使用稍浅的颜色
+            
+            # 为日期预留更多边距，确保不超出边界
+            margin = 1  # 增加边距
+            bottomRect = QRect(
+                rect.left() + margin, 
+                rect.top() + top_height, 
+                rect.width() - margin * 2, 
+                bottom_height - margin
+            )
+            
+            # 使用Qt.TextWrapAnywhere确保文本不会超出边界
+            painter.drawText(bottomRect, Qt.AlignCenter | Qt.TextWrapAnywhere, str(bottom))
+            print(f"DEBUG: 绘制第二行 - 矩形: {bottomRect}, 文本: '{bottom}'")
+        
         painter.restore()
 
 
@@ -267,7 +315,7 @@ class CustomerOrderManagement(QWidget):
         self.kanban_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.kanban_table.setHorizontalHeader(TwoRowHeader(Qt.Horizontal, self.kanban_table))
         hdr = self.kanban_table.horizontalHeader()
-        hdr.setFixedHeight(int(self.fontMetrics().height()*2.4))
+        hdr.setFixedHeight(int(self.fontMetrics().height()*3.0))  # 与TwoRowHeader保持一致
         try:
             hdr.repaint()
             hdr.updateGeometry()
@@ -302,7 +350,7 @@ class CustomerOrderManagement(QWidget):
             data = CustomerOrderService.get_order_lines_by_import_version(version_id)
             all_dates = []
             for ln in data or []:
-                d = _safe_parse_date(_get(ln, "DeliveryDate", "due_date"))
+                d = _safe_parse_date(_get(ln, "DeliveryDate", "delivery_date", "DueDate", "due_date", ""))
                 if d:
                     all_dates.append(d)
             if all_dates:
@@ -372,10 +420,17 @@ class CustomerOrderManagement(QWidget):
             sd, ed = ed, sd
         page_typ = (order_type or "").upper()
 
-        # 1) 构造列
-        colspec, by_year, years = _build_week_cols(sd, ed)
+        # 1) 收集所有订单日期
+        order_dates = []
+        for ln in (data or []):
+            d = _safe_parse_date(_get(ln, "DeliveryDate", "delivery_date", "DueDate", "due_date", ""))
+            if d:
+                order_dates.append(d)
+        
+        # 2) 构造列
+        colspec, by_year, years = _build_week_cols(sd, ed, order_dates)
 
-        # 2) 行集合：整版数据收集 (Supplier, PN)
+        # 3) 行集合：整版数据收集 (Supplier, PN)
         groups_all = defaultdict(lambda: {"release": {}})
         for ln in (data or []):
             sup = _get(ln, "SupplierCode", "supplier_code", "Supplier", "supplier", "") or ""
@@ -394,10 +449,10 @@ class CustomerOrderManagement(QWidget):
             _set_if_val("receipt_qty", _get(ln, "ReceiptQuantity", "receipt_qty"), cast_int=True)
             _set_if_val("cum_received", _get(ln, "CumReceived", "cum_received"), cast_int=True)
 
-        # 3) 过滤后的数据
+        # 4) 过滤后的数据
         lines_filtered = []
         for ln in (data or []):
-            d = _safe_parse_date(_get(ln, "DeliveryDate", "due_date"))
+            d = _safe_parse_date(_get(ln, "DeliveryDate", "delivery_date", "DueDate", "due_date", ""))
             if not d: continue
             if sd and d < sd: continue
             if ed and d > ed: continue
@@ -409,19 +464,22 @@ class CustomerOrderManagement(QWidget):
             ln["__fp__"] = "F" if typ == "F" else "P"
             lines_filtered.append(ln)
 
-        week_qty = defaultdict(lambda: defaultdict(int))
+        date_qty = defaultdict(lambda: defaultdict(int))
         fp_map = {}
         for ln in lines_filtered:
             sup = _get(ln, "SupplierCode", "supplier_code", "Supplier", "supplier", "")
             pn = _get(ln, "ItemNumber", "item_number", "Item", "item", "")
-            wk = ln["__week__"]
+            # 使用已经解析过的日期
+            d = _safe_parse_date(_get(ln, "DeliveryDate", "delivery_date", "DueDate", "due_date", ""))
+            if not d:
+                continue
             q = _norm_int(_get(ln, "RequiredQty", "req_qty", default=0), 0)
-            week_qty[(sup, pn)][wk] += q
-            cur = fp_map.get((sup, pn, wk))
+            date_qty[(sup, pn)][d] += q
+            cur = fp_map.get((sup, pn, d))
             if (cur is None) or (cur == "P" and ln["__fp__"] == "F"):
-                fp_map[(sup, pn, wk)] = ln["__fp__"]
+                fp_map[(sup, pn, d)] = ln["__fp__"]
 
-        # 4) 表头
+        # 5) 表头
         fixed_headers = [
             "Release Date", "Release ID", "PN", "Des", "Project", "Item",
             "Purchase Order", "Receipt Quantity", "Cum Received"
@@ -436,58 +494,41 @@ class CustomerOrderManagement(QWidget):
 
         base_col = len(fixed_headers)
         for i, (kind, val) in enumerate(colspec):
-            if kind == "week":
+            if kind == "date":
                 cw = f"CW{val.isocalendar()[1]:02d}"
+                date_str = val.strftime("%Y/%m/%d")
                 it = QTableWidgetItem(cw)
-                it.setData(Qt.UserRole, val.strftime("%Y/%m/%d"))
+                it.setData(Qt.UserRole, date_str)
+                print(f"DEBUG: 设置CW表头 - 列{base_col + i}: '{cw}' / '{date_str}'")
             else:
                 it = QTableWidgetItem(f"{val}合计")
             self.kanban_table.setHorizontalHeaderItem(base_col + i, it)
         self.kanban_table.setHorizontalHeaderItem(headers_count - 1, QTableWidgetItem("Total"))
+        
+        # 强制刷新表头显示
+        header = self.kanban_table.horizontalHeader()
+        header.updateGeometry()
+        header.repaint()
 
-        # 5) 行集合（按产品型号规则排序）
+        # 6) 行集合（按产品型号规则排序）
+        # 使用与NDLUilt.py一致的排序逻辑
+        DESIRED_PN_ORDER = [
+            "R001H368E","R001H369E","R001P320B","R001P313B",
+            "R001J139B","R001J140B","R001J141B","R001J142B"
+        ]
+        
         def sort_key(item):
             sup, pn = item
             if not pn:
                 return (999, 999, sup)  # 空PN排最后
             
-            # 去掉最后一位字母后缀，获取基础产品型号
-            if len(pn) > 1 and pn[-1].isalpha():
-                base_pn = pn[:-1]  # 去掉最后一位字母
+            # 检查是否在期望的PN列表中
+            if pn in DESIRED_PN_ORDER:
+                priority = DESIRED_PN_ORDER.index(pn)
             else:
-                base_pn = pn
+                priority = 999  # 不在列表中的排最后
             
-            # 定义排序优先级（基于去掉最后一位字母的基础型号）
-            priority_map = {
-                "R001H368": 1,  # Passat rear double
-                "R001H369": 2,  # Passat rear single
-                "R001P320": 3,  # Tiguan L rear double
-                "R001P313": 4,  # Tiguan L rear single
-                "R001J139": 5,  # A5L rear double
-                "R001J140": 6,  # A5L rear single
-                "R001J141": 7,  # Lavida rear double
-                "R001J142": 8,  # Lavida rear single
-            }
-            
-            # 先尝试完整基础型号匹配
-            if base_pn in priority_map:
-                priority = priority_map[base_pn]
-            else:
-                # 如果完整匹配失败，尝试基础项目匹配
-                if len(base_pn) > 1 and base_pn[-1].isdigit():
-                    base = base_pn[:-1]  # 去掉最后一位数字
-                else:
-                    base = base_pn
-                
-                base_priority_map = {
-                    "R001H36": 10,  # Passat
-                    "R001P32": 20,  # Tiguan L
-                    "R001J13": 30,  # A5L
-                    "R001J14": 40,  # Lavida
-                }
-                priority = base_priority_map.get(base, 999)  # 不匹配的排最后
-            
-            return (priority, sup, base_pn, pn)  # 添加完整PN作为最后的排序依据
+            return (priority, sup, pn)
         
         keys_all = sorted(groups_all.keys(), key=sort_key)
         
@@ -527,10 +568,14 @@ class CustomerOrderManagement(QWidget):
                 base = base_pn
             
             base_map = {
-                "R001H36": "Passat",
-                "R001P32": "Tiguan L", 
-                "R001J13": "A5L",
-                "R001J14": "Lavida"
+                "R001H368": "Passat rear double",
+                "R001H369": "Passat rear single",
+                "R001P320": "Tiguan L rear double",
+                "R001P313": "Tiguan L rear single",
+                "R001J139": "A5L rear double",
+                "R001J140": "A5L rear single",
+                "R001J141": "Lavida rear double",
+                "R001J142": "Lavida rear single"
             }
             
             project = base_map.get(base, "UNKNOWN")
@@ -538,7 +583,7 @@ class CustomerOrderManagement(QWidget):
                 print(f"警告：产品型号 '{pn}' 没有匹配到项目，默认放到最后")
             return project
 
-        # 6) 填充数据行
+        # 7) 填充数据行
         for row_idx, (sup, pn) in enumerate(keys_all):
             ri = groups_all[(sup, pn)]["release"]
             rd_obj = _safe_parse_date(ri.get("release_date"))
@@ -558,8 +603,8 @@ class CustomerOrderManagement(QWidget):
             row_total = 0
             cursor_col = base_col
             for kind, val in colspec:
-                if kind == "week":
-                    qty = _norm_int(week_qty[(sup, pn)].get(val, 0), 0)
+                if kind == "date":
+                    qty = _norm_int(date_qty[(sup, pn)].get(val, 0), 0)
                     row_total += qty
                     cell = QTableWidgetItem(str(qty))
                     fp = fp_map.get((sup, pn, val))
@@ -567,7 +612,7 @@ class CustomerOrderManagement(QWidget):
                         cell.setBackground(QColor("#C6E0B4") if fp == "F" else QColor("#FFF2CC"))
                     self.kanban_table.setItem(row_idx, cursor_col, cell)
                 else:
-                    s = sum(_norm_int(week_qty[(sup, pn)].get(w, 0), 0) for w in by_year[val])
+                    s = sum(_norm_int(date_qty[(sup, pn)].get(d, 0), 0) for d in by_year[val])
                     cell = QTableWidgetItem(str(s))
                     f = cell.font();
                     f.setBold(True);
@@ -578,7 +623,7 @@ class CustomerOrderManagement(QWidget):
 
             self.kanban_table.setItem(row_idx, headers_count - 1, QTableWidgetItem(str(row_total)))
 
-        # 7) TOTAL 行
+        # 8) TOTAL 行
         total_row = data_rows
         self.kanban_table.setItem(total_row, 0, QTableWidgetItem("TOTAL"))
         # 只从 CW 开始统计（前9列不算）
@@ -762,10 +807,10 @@ class CustomerOrderManagement(QWidget):
 
         # 第二行：空行 + 日期
         second_row = [""] * len(fixed_headers)
-        for header in week_headers:
+        for i, header in enumerate(week_headers):
             if "CW" in header:
                 # 从表头数据中获取日期
-                header_item = table.horizontalHeaderItem(len(fixed_headers) + len(second_row))
+                header_item = table.horizontalHeaderItem(len(fixed_headers) + i)
                 if header_item:
                     date_data = header_item.data(Qt.UserRole)
                     if date_data:

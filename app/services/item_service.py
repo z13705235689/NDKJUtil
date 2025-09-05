@@ -16,7 +16,19 @@ class ItemService:
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
             FROM Items i
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
+            WHERE i.IsActive = 1
             ORDER BY i.ItemCode
+        """
+        return ItemService._rows_to_dicts(query_all(sql))
+
+    @staticmethod
+    def get_all_items_with_status() -> List[Dict]:
+        """获取所有物料（包括启用和禁用状态），启用的优先显示"""
+        sql = """
+            SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
+            FROM Items i
+            LEFT JOIN Items p ON i.ParentItemId = p.ItemId
+            ORDER BY i.IsActive DESC, i.ItemCode
         """
         return ItemService._rows_to_dicts(query_all(sql))
 
@@ -36,8 +48,8 @@ class ItemService:
         sql = """
             INSERT INTO Items (
                 ItemCode, CnName, ItemSpec, ItemType, Unit, Quantity,
-                SafetyStock, Remark, Brand, ParentItemId
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                SafetyStock, Remark, Brand, ParentItemId, IsActive
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             item_data.get('ItemCode'),
@@ -49,7 +61,8 @@ class ItemService:
             item_data.get('SafetyStock', 0),
             item_data.get('Remark', ''),
             item_data.get('Brand', ''),
-            item_data.get('ParentItemId')
+            item_data.get('ParentItemId'),
+            item_data.get('IsActive', 1)  # 默认启用
         )
         execute(sql, params)
         return get_last_id()
@@ -60,7 +73,7 @@ class ItemService:
             UPDATE Items SET
                 ItemCode = ?, CnName = ?, ItemSpec = ?, ItemType = ?,
                 Unit = ?, Quantity = ?, SafetyStock = ?, Remark = ?,
-                Brand = ?, ParentItemId = ?, UpdatedDate = CURRENT_TIMESTAMP
+                Brand = ?, ParentItemId = ?, IsActive = ?, UpdatedDate = CURRENT_TIMESTAMP
             WHERE ItemId = ?
         """
         params = (
@@ -74,6 +87,7 @@ class ItemService:
             item_data.get('Remark', ''),
             item_data.get('Brand', ''),
             item_data.get('ParentItemId'),
+            item_data.get('IsActive', 1),
             item_id
         )
         execute(sql, params)
@@ -83,6 +97,12 @@ class ItemService:
         execute("DELETE FROM Items WHERE ItemId = ?", (item_id,))
 
     @staticmethod
+    def toggle_item_status(item_id: int, is_active: bool) -> None:
+        """切换物料启用状态"""
+        execute("UPDATE Items SET IsActive = ?, UpdatedDate = CURRENT_TIMESTAMP WHERE ItemId = ?", 
+                (1 if is_active else 0, item_id))
+
+    @staticmethod
     def search_items(search_text: str) -> List[Dict]:
         sql = """
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
@@ -90,8 +110,23 @@ class ItemService:
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
             WHERE (
                 i.ItemCode LIKE ? OR i.CnName LIKE ? OR i.ItemSpec LIKE ? OR i.Brand LIKE ?
-            )
+            ) AND i.IsActive = 1
             ORDER BY i.ItemCode
+        """
+        pattern = f"%{search_text}%"
+        return ItemService._rows_to_dicts(query_all(sql, (pattern, pattern, pattern, pattern)))
+
+    @staticmethod
+    def search_items_with_status(search_text: str) -> List[Dict]:
+        """搜索物料（包括启用和禁用状态）"""
+        sql = """
+            SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
+            FROM Items i
+            LEFT JOIN Items p ON i.ParentItemId = p.ItemId
+            WHERE (
+                i.ItemCode LIKE ? OR i.CnName LIKE ? OR i.ItemSpec LIKE ? OR i.Brand LIKE ?
+            )
+            ORDER BY i.IsActive DESC, i.ItemCode
         """
         pattern = f"%{search_text}%"
         return ItemService._rows_to_dicts(query_all(sql, (pattern, pattern, pattern, pattern)))
@@ -102,8 +137,20 @@ class ItemService:
             SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
             FROM Items i
             LEFT JOIN Items p ON i.ParentItemId = p.ItemId
-            WHERE i.ItemType = ?
+            WHERE i.ItemType = ? AND i.IsActive = 1
             ORDER BY i.ItemCode
+        """
+        return ItemService._rows_to_dicts(query_all(sql, (item_type,)))
+
+    @staticmethod
+    def get_items_by_type_with_status(item_type: str) -> List[Dict]:
+        """根据类型获取物料（包括启用和禁用状态）"""
+        sql = """
+            SELECT i.*, p.ItemCode as ParentItemCode, p.CnName as ParentItemName
+            FROM Items i
+            LEFT JOIN Items p ON i.ParentItemId = p.ItemId
+            WHERE i.ItemType = ?
+            ORDER BY i.IsActive DESC, i.ItemCode
         """
         return ItemService._rows_to_dicts(query_all(sql, (item_type,)))
 
@@ -112,13 +159,28 @@ class ItemService:
         sql = """
             SELECT ItemId, ItemCode, CnName, ItemType
             FROM Items
-            WHERE ItemType IN ('FG', 'SFG', 'RM', 'PKG')
+            WHERE ItemType IN ('FG', 'SFG', 'RM', 'PKG') AND IsActive = 1
         """
         params: List = []
         if exclude_item_id:
             sql += " AND ItemId != ?"
             params.append(exclude_item_id)
         sql += " ORDER BY ItemType, ItemCode"
+        return ItemService._rows_to_dicts(query_all(sql, params))
+
+    @staticmethod
+    def get_parent_items_with_status(exclude_item_id: Optional[int] = None) -> List[Dict]:
+        """获取上级物资（包括启用和禁用状态）"""
+        sql = """
+            SELECT ItemId, ItemCode, CnName, ItemType, IsActive
+            FROM Items
+            WHERE ItemType IN ('FG', 'SFG', 'RM', 'PKG')
+        """
+        params: List = []
+        if exclude_item_id:
+            sql += " AND ItemId != ?"
+            params.append(exclude_item_id)
+        sql += " ORDER BY IsActive DESC, ItemType, ItemCode"
         return ItemService._rows_to_dicts(query_all(sql, params))
 
     @staticmethod
@@ -158,7 +220,7 @@ class ItemService:
         sql = """
             SELECT ItemId, ItemCode, CnName, ItemType, ItemSpec, Unit, Quantity
             FROM Items
-            WHERE ParentItemId = ?
+            WHERE ParentItemId = ? AND IsActive = 1
             ORDER BY ItemCode
         """
         return ItemService._rows_to_dicts(query_all(sql, (item_id,)))
