@@ -11,6 +11,8 @@ from app.ui.customer_order_management import CustomerOrderManagement
 from app.ui.inventory_management import InventoryManagement
 from app.ui.mrp_viewer import MRPViewer
 from app.ui.database_management import DatabaseManagement
+from app.ui.scheduling_order_management import SchedulingOrderManagementWidget
+from app.ui.scheduling_mrp_calculation import SchedulingMRPDialog
 
 
 class ModernButton(QPushButton):
@@ -160,7 +162,8 @@ class Sidebar(QFrame):
             "项目管理",
             "客户订单",
             "库存管理",
-            "MRP 计算",
+            "订单MRP管理",
+            "生产MRP管理",
             "数据库管理",
         ]
         
@@ -341,6 +344,10 @@ class ContentArea(QFrame):
         # MRP计算页面
         self.mrp_page = self.create_mrp_page()
         self.stacked_widget.addWidget(self.mrp_page)
+
+        # 排产订单页面
+        self.scheduling_order_page = self.create_scheduling_order_page()
+        self.stacked_widget.addWidget(self.scheduling_order_page)
 
         # 数据库管理页面
         self.database_page = self.create_database_page()
@@ -535,6 +542,16 @@ class ContentArea(QFrame):
         layout.addWidget(self.mrp_widget)
         return page
 
+    def create_scheduling_order_page(self):
+        """创建排产订单页面"""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
+        self.scheduling_order_widget = SchedulingOrderManagementWidget()
+        layout.addWidget(self.scheduling_order_widget)
+        return page
+
     def create_database_page(self):
         """创建数据库管理页面"""
         page = QWidget()
@@ -604,13 +621,15 @@ class MainWindow(QMainWindow):
             self.content_area.switch_to_page(4)  # 客户订单管理页面
         elif "库存管理" in page_name:
             self.content_area.switch_to_page(5)  # 库存管理页面
-        elif "MRP 计算" in page_name:
+        elif "订单MRP管理" in page_name:
             self.content_area.switch_to_page(6)  # MRP页面
             # 切换到MRP页面时自动刷新订单版本列表
             if hasattr(self.content_area, 'mrp_widget'):
                 self.content_area.mrp_widget.refresh_order_versions()
+        elif "生产MRP管理" in page_name:
+            self.content_area.switch_to_page(7)  # 排产订单页面
         elif "数据库管理" in page_name:
-            self.content_area.switch_to_page(7)  # 数据库管理页面
+            self.content_area.switch_to_page(8)  # 数据库管理页面
         else:
             self.content_area.switch_to_page(1)  # 默认物料管理页面
     

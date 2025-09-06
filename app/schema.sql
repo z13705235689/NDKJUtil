@@ -544,4 +544,79 @@ CREATE INDEX IF NOT EXISTS idx_project_mappings_project_code ON ProjectMappings(
 CREATE INDEX IF NOT EXISTS idx_project_mappings_item_id ON ProjectMappings(ItemId);
 CREATE INDEX IF NOT EXISTS idx_project_mappings_brand ON ProjectMappings(Brand);
 
+-- ============ 新的排产订单系统 ============
+
+-- 排产订单主表
+CREATE TABLE IF NOT EXISTS SchedulingOrders (
+    OrderId INTEGER PRIMARY KEY AUTOINCREMENT,
+    OrderName TEXT NOT NULL,                       -- 排产订单名称
+    StartDate DATE NOT NULL,                       -- 初始日期
+    EndDate DATE NOT NULL,                         -- 结束日期（初始日期+30天）
+    Status TEXT DEFAULT 'Draft',                  -- 状态：Draft/Active/Completed/Cancelled
+    CreatedBy TEXT,                                -- 创建人
+    CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedBy TEXT,                                -- 更新人
+    UpdatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Remark TEXT                                    -- 备注
+);
+
+-- 排产订单产品表（选择需要排产的成品）
+CREATE TABLE IF NOT EXISTS SchedulingOrderProducts (
+    ProductId INTEGER PRIMARY KEY AUTOINCREMENT,
+    OrderId INTEGER NOT NULL,                      -- 关联排产订单
+    ItemId INTEGER NOT NULL,                      -- 成品物料ID
+    ItemCode TEXT NOT NULL,                       -- 成品编码
+    ItemName TEXT NOT NULL,                       -- 成品名称
+    ItemSpec TEXT,                                -- 成品规格
+    Brand TEXT,                                   -- 品牌型号
+    ProjectName TEXT,                             -- 项目名称
+    CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (OrderId) REFERENCES SchedulingOrders(OrderId) ON DELETE CASCADE,
+    FOREIGN KEY (ItemId) REFERENCES Items(ItemId) ON DELETE CASCADE,
+    UNIQUE(OrderId, ItemId)                       -- 同一订单下，同一成品只能有一条记录
+);
+
+-- 排产订单明细表（按天排产数量）
+CREATE TABLE IF NOT EXISTS SchedulingOrderLines (
+    LineId INTEGER PRIMARY KEY AUTOINCREMENT,
+    OrderId INTEGER NOT NULL,                      -- 关联排产订单
+    ItemId INTEGER NOT NULL,                      -- 成品物料ID
+    ProductionDate DATE NOT NULL,                 -- 生产日期
+    PlannedQty REAL NOT NULL DEFAULT 0,           -- 计划生产数量
+    Status TEXT DEFAULT 'Planned',               -- 状态：Planned/InProgress/Completed/Cancelled
+    CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (OrderId) REFERENCES SchedulingOrders(OrderId) ON DELETE CASCADE,
+    FOREIGN KEY (ItemId) REFERENCES Items(ItemId) ON DELETE CASCADE,
+    UNIQUE(OrderId, ItemId, ProductionDate)      -- 同一订单下，同一成品同一日期只能有一条记录
+);
+
+-- 排产订单MRP计算结果表
+CREATE TABLE IF NOT EXISTS SchedulingOrderMRP (
+    MRPId INTEGER PRIMARY KEY AUTOINCREMENT,
+    OrderId INTEGER NOT NULL,                     -- 关联排产订单
+    ItemId INTEGER NOT NULL,                     -- 物料ID（零部件）
+    ProductionDate DATE NOT NULL,                -- 生产日期
+    RequiredQty REAL NOT NULL DEFAULT 0,         -- 需求数量
+    OnHandQty REAL DEFAULT 0,                    -- 在手库存
+    NetQty REAL DEFAULT 0,                       -- 净需求
+    Status TEXT DEFAULT 'Calculated',            -- 状态：Calculated/Confirmed/Cancelled
+    CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (OrderId) REFERENCES SchedulingOrders(OrderId) ON DELETE CASCADE,
+    FOREIGN KEY (ItemId) REFERENCES Items(ItemId) ON DELETE CASCADE,
+    UNIQUE(OrderId, ItemId, ProductionDate)      -- 同一订单下，同一物料同一日期只能有一条MRP记录
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_scheduling_orders_status ON SchedulingOrders(Status);
+CREATE INDEX IF NOT EXISTS idx_scheduling_orders_date_range ON SchedulingOrders(StartDate, EndDate);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_products_order ON SchedulingOrderProducts(OrderId);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_products_item ON SchedulingOrderProducts(ItemId);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_lines_order ON SchedulingOrderLines(OrderId);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_lines_item_date ON SchedulingOrderLines(ItemId, ProductionDate);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_lines_date ON SchedulingOrderLines(ProductionDate);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_mrp_order ON SchedulingOrderMRP(OrderId);
+CREATE INDEX IF NOT EXISTS idx_scheduling_order_mrp_item_date ON SchedulingOrderMRP(ItemId, ProductionDate);
+
 

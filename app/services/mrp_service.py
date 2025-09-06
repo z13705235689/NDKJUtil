@@ -14,7 +14,7 @@ WEEK_FMT = "CW{0:02d}"
 class MRPService:
     """
     MRP 计算服务（看板版）
-    - 以"周"为列，输出每个子件两个数据行：生产计划、即时库存
+    - 以"周"为列，输出每个子件两个数据行：订单计划、即时库存
     - 支持按客户订单计算和按成品筛选
     - 仅展开到 RM/PKG（可通过 include_types 调整）
     """
@@ -31,7 +31,7 @@ class MRPService:
           "weeks": ["CW31","CW32",...],
           "rows": [  # 两行成对出现
              {"ItemId":1,"ItemCode":"RM-001","ItemName":"铝丝", "ItemType":"RM",
-              "RowType":"生产计划","StartOnHand": 48611.0, "cells":{"CW31":123,"CW32":0,...}},
+              "RowType":"订单计划","StartOnHand": 48611.0, "cells":{"CW31":123,"CW32":0,...}},
              {"ItemId":1,"ItemCode":"RM-001","ItemName":"铝丝", "ItemType":"RM",
               "RowType":"即时库存","StartOnHand": 48611.0, "cells":{"CW31":48488,"CW32":...}},
              ...
@@ -75,10 +75,10 @@ class MRPService:
 
         for parent_id, wk_map in parent_weekly.items():
             print(f"📊 [calculate_mrp_kanban] 处理父物料ID：{parent_id}")
-            for cw, qty in wk_map.items():
+            for delivery_date, qty in wk_map.items():
                 if qty <= 0:
                     continue
-                print(f"📊 [calculate_mrp_kanban] 展开BOM：父物料{parent_id}，周{cw}，数量{qty}")
+                print(f"📊 [calculate_mrp_kanban] 展开BOM：父物料{parent_id}，日期{delivery_date}，数量{qty}")
                 # 用 BomService.expand_bom 递归展开并考虑损耗
                 expanded = BomService.expand_bom(parent_id, qty)
                 print(f"📊 [calculate_mrp_kanban] BOM展开结果：{len(expanded)} 个组件")
@@ -88,7 +88,7 @@ class MRPService:
                         print(f"📊 [calculate_mrp_kanban] 跳过组件：{e.get('ItemCode', '')}，类型{itype}")
                         continue
                     cid = int(e["ItemId"])
-                    child_weekly[cid][cw] += float(e.get("ActualQty") or 0.0)
+                    child_weekly[cid][delivery_date] += float(e.get("ActualQty") or 0.0)
                     if cid not in child_meta:
                         child_meta[cid] = {
                             "ItemId": cid,
@@ -111,7 +111,8 @@ class MRPService:
         for item_id in sorted(child_weekly.keys(),
                               key=lambda i: (child_meta[i].get("ItemType",""), child_meta[i].get("ItemCode",""))):
             meta = child_meta[item_id]
-            plan_cells = {w: float(child_weekly[item_id].get(w, 0.0)) for w in weeks}
+            # 使用具体的订单日期作为键，与客户订单看板保持一致
+            plan_cells = {delivery_date: float(child_weekly[item_id].get(delivery_date, 0.0)) for delivery_date in weeks}
 
             # 期初库存（允许缺省为 0）
             start_onhand = float(onhand_all.get(item_id, 0.0))
@@ -119,11 +120,11 @@ class MRPService:
             # 运行库存：按照 "本周库存 = 上周库存 - 本周计划"
             stock_cells: Dict[str, float] = {}
             running = start_onhand
-            for w in weeks:
-                running = running - plan_cells[w]
-                stock_cells[w] = running  # 允许出现负数以暴露缺口
+            for delivery_date in weeks:
+                running = running - plan_cells[delivery_date]
+                stock_cells[delivery_date] = running  # 允许出现负数以暴露缺口
 
-            plan_row = dict(meta, RowType="生产计划", StartOnHand=start_onhand, cells=plan_cells)
+            plan_row = dict(meta, RowType="订单计划", StartOnHand=start_onhand, cells=plan_cells)
             stock_row = dict(meta, RowType="即时库存", StartOnHand=start_onhand, cells=stock_cells)
             rows.append(plan_row)
             rows.append(stock_row)
@@ -155,9 +156,9 @@ class MRPService:
         返回：
         {
           "weeks": ["CW31","CW32",...],
-          "rows": [  # 每个成品两行：生产计划、即时库存
+          "rows": [  # 每个成品两行：订单计划、即时库存
              {"ItemId":1,"ItemCode":"FG-001","ItemName":"产品A", "ItemType":"FG",
-              "RowType":"生产计划","StartOnHand": 100.0, "SafetyStock": 50.0,
+              "RowType":"订单计划","StartOnHand": 100.0, "SafetyStock": 50.0,
               "cells":{"CW31":50,"CW32":30,...}},
              {"ItemId":1,"ItemCode":"FG-001","ItemName":"产品A", "ItemType":"FG",
               "RowType":"即时库存","StartOnHand": 100.0, "SafetyStock": 50.0,
@@ -183,7 +184,7 @@ class MRPService:
         # 获取成品信息（从BOM表获取，确保名称对应）
         parent_meta = MRPService._fetch_parent_items_from_bom(list(parent_weekly.keys()))
 
-        # 生成成品MRP行（每个成品两行：生产计划、即时库存）
+        # 生成成品MRP行（每个成品两行：订单计划、即时库存）
         rows: List[Dict] = []
         for item_id in sorted(parent_weekly.keys(),
                               key=lambda i: (parent_meta[i].get("ItemType",""), parent_meta[i].get("ItemCode",""))):
@@ -196,14 +197,14 @@ class MRPService:
             # 安全库存
             safety_stock = meta.get("SafetyStock", 0.0)
 
-            # 生产计划行：显示每周的需求量
+            # 订单计划行：显示每周的需求量
             plan_row = {
                 "ItemId": meta.get("ItemId"),
                 "ItemCode": meta.get("ItemCode"),
                 "ItemName": meta.get("CnName", ""),  # 使用物料名称，不用BOM名称
                 "ItemSpec": meta.get("ItemSpec", ""),
                 "ItemType": meta.get("ItemType"),
-                "RowType": "生产计划", 
+                "RowType": "订单计划", 
                 "StartOnHand": start_onhand,
                 "SafetyStock": safety_stock,
                 "cells": demand_cells  # 显示原始需求
@@ -258,7 +259,7 @@ class MRPService:
           "weeks": ["CW31","CW32",...],
           "rows": [  # 两行成对出现
              {"ItemId":1,"ItemCode":"RM-001","ItemName":"铝丝", "ItemType":"RM",
-              "RowType":"生产计划","StartOnHand": "48611+1000", "cells":{"CW31":123,"CW32":0,...}},
+              "RowType":"订单计划","StartOnHand": "48611+1000", "cells":{"CW31":123,"CW32":0,...}},
              {"ItemId":1,"ItemCode":"RM-001","ItemName":"铝丝", "ItemType":"RM",
               "RowType":"即时库存","StartOnHand": "48611+1000", "cells":{"CW31":48488,"CW32":...}},
              ...
@@ -343,7 +344,7 @@ class MRPService:
         print(f"📊 [calculate_comprehensive_mrp_kanban] 获取期初库存")
         onhand_all = MRPService._fetch_onhand_total()
 
-        # 6) 生成MRP行（每个物料两行：生产计划、即时库存）
+        # 6) 生成MRP行（每个物料两行：订单计划、即时库存）
         rows: List[Dict] = []
         for item_id in sorted(child_weekly.keys(),
                               key=lambda i: (child_meta[i].get("ItemType",""), child_meta[i].get("ItemCode",""))):
@@ -356,14 +357,14 @@ class MRPService:
             in_parent_qty = float(child_in_parent_qty.get(item_id, 0.0))
             start_onhand_str = f"{int(in_parent_qty)}+{int(direct_onhand)}"
 
-            # 生产计划行
+            # 订单计划行
             plan_row = {
                 "ItemId": item_id,
                 "ItemCode": meta.get("ItemCode", ""),
                 "ItemName": meta.get("CnName", ""),
                 "ItemSpec": meta.get("ItemSpec", ""),
                 "ItemType": meta.get("ItemType", ""),
-                "RowType": "生产计划",
+                "RowType": "订单计划",
                 "StartOnHand": start_onhand_str,
                 "cells": plan_cells
             }
@@ -409,7 +410,7 @@ class MRPService:
     # ---------------- 明细方法 ---------------- 
     @staticmethod
     def _gen_weeks(start_date: str, end_date: str, import_id: Optional[int] = None) -> List[str]:
-        """生成周列表，基于实际的订单日期，参考客户订单处理页面的逻辑"""
+        """生成周列表，基于实际的订单日期，与客户订单看板完全一致的逻辑"""
         # 如果有指定的订单版本，使用该版本的订单日期
         if import_id is not None:
             # 获取该订单版本的所有唯一订单日期
@@ -451,15 +452,13 @@ class MRPService:
         for y in by_year:
             by_year[y].sort()
         
-        # 生成周列表
+        # 生成日期列表 - 与客户订单看板一致：每个订单日期都创建列，不去重
+        # 返回具体的订单日期而不是CW，与客户订单看板保持一致
         weeks: List[str] = []
-        seen = set()
         for year in sorted(by_year.keys()):
             for d in by_year[year]:
-                w = WEEK_FMT.format(d.isocalendar()[1])
-                if w not in seen:
-                    weeks.append(w)
-                    seen.add(w)
+                # 返回具体的订单日期，格式与客户订单看板一致
+                weeks.append(d.strftime("%Y-%m-%d"))
         
         return weeks
 
@@ -498,6 +497,7 @@ class MRPService:
         print(f"📊 [_fetch_parent_weekly_demand] 参数：{params}")
         
         # 首先获取订单行数据，然后通过品牌匹配BOM来获取对应的父物料
+        # 修改：使用具体的订单日期而不是CW，与客户订单看板保持一致
         sql = f"""
         SELECT 
             col.ItemNumber,
@@ -523,19 +523,21 @@ class MRPService:
         
         for r in rows:
             item_number = r["ItemNumber"]  # 这是品牌字段
+            delivery_date = r["DeliveryDate"]
             calendar_week = r["CalendarWeek"]
             qty = float(r["Qty"] or 0.0)
             
-            # 跳过无效的周数据
-            if not calendar_week:
+            # 跳过无效的日期数据
+            if not delivery_date or not calendar_week:
                 continue
             
             # 通过品牌查找BOM，获取父物料ID
             bom = MRPService.find_bom_by_brand(item_number)
             if bom and bom.get("ParentItemId"):
                 parent_item_id = bom["ParentItemId"]
-                out[parent_item_id][calendar_week] += qty
-                print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 匹配到父物料ID {parent_item_id}, CW={calendar_week}, Qty={qty}")
+                # 使用具体的订单日期作为键，与客户订单看板保持一致
+                out[parent_item_id][delivery_date] += qty
+                print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 匹配到父物料ID {parent_item_id}, Date={delivery_date}, CW={calendar_week}, Qty={qty}")
             else:
                 print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 未找到对应BOM")
                 if item_number not in unmatched_items:
