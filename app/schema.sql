@@ -520,4 +520,28 @@ INSERT OR IGNORE INTO Warehouses(Code, Name)
 SELECT '默认仓库','默认仓库'
 WHERE NOT EXISTS(SELECT 1 FROM Warehouses);
 
+-- 项目映射表 - 管理成品物料和project的映射关系
+CREATE TABLE IF NOT EXISTS ProjectMappings (
+    MappingId INTEGER PRIMARY KEY AUTOINCREMENT,
+    ProjectCode TEXT NOT NULL,                    -- 项目代码
+    ProjectName TEXT NOT NULL,                    -- 项目名称
+    ItemId INTEGER NOT NULL,                     -- 成品物料ID
+    ItemCode TEXT NOT NULL,                      -- 成品物料编码
+    ItemName TEXT NOT NULL,                      -- 成品物料名称
+    Brand TEXT,                                  -- 品牌字段
+    IsActive BOOLEAN NOT NULL DEFAULT 1,         -- 是否启用
+    CreatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CreatedBy TEXT,                              -- 创建人
+    UpdatedBy TEXT,                              -- 更新人
+    Remark TEXT,                                 -- 备注
+    UNIQUE (ProjectCode, ItemId),                -- 项目代码和物料ID的组合唯一
+    FOREIGN KEY (ItemId) REFERENCES Items(ItemId)
+);
+
+-- 创建索引
+CREATE INDEX IF NOT EXISTS idx_project_mappings_project_code ON ProjectMappings(ProjectCode);
+CREATE INDEX IF NOT EXISTS idx_project_mappings_item_id ON ProjectMappings(ItemId);
+CREATE INDEX IF NOT EXISTS idx_project_mappings_brand ON ProjectMappings(Brand);
+
 

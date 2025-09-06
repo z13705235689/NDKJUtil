@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, QTimer
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QColor, QLinearGradient
 from app.ui.materia_management import ItemEditor
 from app.ui.bom_management import BomManagementWidget
+from app.ui.project_management import ProjectManagementWidget
 from app.ui.customer_order_management import CustomerOrderManagement
 from app.ui.inventory_management import InventoryManagement
 from app.ui.mrp_viewer import MRPViewer
@@ -156,6 +157,7 @@ class Sidebar(QFrame):
         # 其他主菜单项
         other_nav_items = [
             "BOM 管理", 
+            "项目管理",
             "客户订单",
             "库存管理",
             "MRP 计算",
@@ -324,6 +326,10 @@ class ContentArea(QFrame):
         self.bom_page = self.create_bom_management_page()
         self.stacked_widget.addWidget(self.bom_page)
         
+        # 项目管理页面
+        self.project_page = self.create_project_management_page()
+        self.stacked_widget.addWidget(self.project_page)
+        
         # 客户订单管理页面
         self.customer_order_page = self.create_customer_order_page()
         self.stacked_widget.addWidget(self.customer_order_page)
@@ -485,6 +491,18 @@ class ContentArea(QFrame):
         
         return page
     
+    def create_project_management_page(self):
+        """创建项目管理页面"""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 16, 16, 16)  # 减小边距
+        layout.setSpacing(16)  # 减小间距
+        
+        # 项目管理
+        self.project_editor = ProjectManagementWidget()
+        layout.addWidget(self.project_editor)
+        return page
+    
     def create_customer_order_page(self):
         """创建客户订单管理页面"""
         page = QWidget()
@@ -580,17 +598,19 @@ class MainWindow(QMainWindow):
             self.content_area.switch_to_page(1)  # 物料管理页面
         elif "BOM 管理" in page_name:
             self.content_area.switch_to_page(2)  # BOM管理页面
+        elif "项目管理" in page_name:
+            self.content_area.switch_to_page(3)  # 项目管理页面
         elif "客户订单" in page_name:
-            self.content_area.switch_to_page(3)  # 客户订单管理页面
+            self.content_area.switch_to_page(4)  # 客户订单管理页面
         elif "库存管理" in page_name:
-            self.content_area.switch_to_page(4)  # 库存管理页面
+            self.content_area.switch_to_page(5)  # 库存管理页面
         elif "MRP 计算" in page_name:
-            self.content_area.switch_to_page(5)  # MRP页面
+            self.content_area.switch_to_page(6)  # MRP页面
             # 切换到MRP页面时自动刷新订单版本列表
             if hasattr(self.content_area, 'mrp_widget'):
                 self.content_area.mrp_widget.refresh_order_versions()
         elif "数据库管理" in page_name:
-            self.content_area.switch_to_page(6)  # 数据库管理页面
+            self.content_area.switch_to_page(7)  # 数据库管理页面
         else:
             self.content_area.switch_to_page(1)  # 默认物料管理页面
     

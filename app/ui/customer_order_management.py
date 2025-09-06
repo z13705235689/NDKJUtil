@@ -510,25 +510,66 @@ class CustomerOrderManagement(QWidget):
         header.updateGeometry()
         header.repaint()
 
-        # 6) 行集合（按产品型号规则排序）
-        # 使用与NDLUilt.py一致的排序逻辑
-        DESIRED_PN_ORDER = [
-            "R001H368E","R001H369E","R001P320B","R001P313B",
-            "R001J139B","R001J140B","R001J141B","R001J142B"
-        ]
-        
+        # 6) 行集合（按项目映射表的DisplayOrder排序）
         def sort_key(item):
             sup, pn = item
             if not pn:
-                return (999, 999, sup)  # 空PN排最后
+                return (999999, 999, sup)  # 空PN排最后
             
-            # 检查是否在期望的PN列表中
-            if pn in DESIRED_PN_ORDER:
-                priority = DESIRED_PN_ORDER.index(pn)
-            else:
-                priority = 999  # 不在列表中的排最后
-            
-            return (priority, sup, pn)
+            try:
+                from app.services.project_service import ProjectService
+                
+                # 先尝试完整型号匹配
+                project_code = ProjectService.get_project_by_item_brand(pn)
+                if project_code:
+                    mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                    if mappings:
+                        display_order = mappings[0].get('DisplayOrder', 999999)
+                        return (display_order, sup, pn)
+                
+                # 去掉最后一位字母后缀，获取基础产品型号
+                if len(pn) > 1 and pn[-1].isalpha():
+                    base_pn = pn[:-1]  # 去掉最后一位字母
+                else:
+                    base_pn = pn
+                
+                # 尝试基础型号匹配
+                project_code = ProjectService.get_project_by_item_brand(base_pn)
+                if project_code:
+                    mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                    if mappings:
+                        display_order = mappings[0].get('DisplayOrder', 999999)
+                        return (display_order, sup, pn)
+                
+                # 如果完整匹配失败，尝试基础项目匹配
+                if len(base_pn) > 1 and base_pn[-1].isdigit():
+                    base = base_pn[:-1]  # 去掉最后一位数字
+                else:
+                    base = base_pn
+                
+                project_code = ProjectService.get_project_by_item_brand(base)
+                if project_code:
+                    mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                    if mappings:
+                        display_order = mappings[0].get('DisplayOrder', 999999)
+                        return (display_order, sup, pn)
+                
+                # 如果都没有匹配到，使用硬编码的备用排序
+                DESIRED_PN_ORDER = [
+                    "R001H368E","R001H369E","R001P320B","R001P313B",
+                    "R001J139B","R001J140B","R001J141B","R001J142B"
+                ]
+                
+                if pn in DESIRED_PN_ORDER:
+                    priority = DESIRED_PN_ORDER.index(pn) + 1000  # 给硬编码的排序一个较高的优先级
+                else:
+                    priority = 999999  # 不在列表中的排最后
+                
+                return (priority, sup, pn)
+                
+            except Exception as e:
+                print(f"❌ [sort_key] 排序失败: {str(e)}")
+                return (999999, sup, pn)
         
         keys_all = sorted(groups_all.keys(), key=sort_key)
         
@@ -536,52 +577,68 @@ class CustomerOrderManagement(QWidget):
         self.kanban_table.setRowCount(data_rows + 1)  # +1 行留给 TOTAL
 
         def project_name(pn: str) -> str:
+            """根据产品型号获取项目名称，使用项目映射表"""
             if not pn:
                 return "UNKNOWN"
             
-            # 去掉最后一位字母后缀，获取基础产品型号
-            if len(pn) > 1 and pn[-1].isalpha():
-                base_pn = pn[:-1]  # 去掉最后一位字母
-            else:
-                base_pn = pn
-            
-            # 完整的产品型号映射（基于去掉最后一位字母的基础型号）
-            full_pn_map = {
-                "R001H368": "Passat rear double",
-                "R001H369": "Passat rear single",
-                "R001P320": "Tiguan L rear double", 
-                "R001P313": "Tiguan L rear single",
-                "R001J139": "A5L rear double",
-                "R001J140": "A5L rear single",
-                "R001J141": "Lavida rear double",
-                "R001J142": "Lavida rear single"
-            }
-            
-            # 先尝试完整基础型号匹配
-            if base_pn in full_pn_map:
-                return full_pn_map[base_pn]
-            
-            # 如果完整匹配失败，尝试基础项目匹配
-            if len(base_pn) > 1 and base_pn[-1].isdigit():
-                base = base_pn[:-1]  # 去掉最后一位数字
-            else:
-                base = base_pn
-            
-            base_map = {
-                "R001H368": "Passat rear double",
-                "R001H369": "Passat rear single",
-                "R001P320": "Tiguan L rear double",
-                "R001P313": "Tiguan L rear single",
-                "R001J139": "A5L rear double",
-                "R001J140": "A5L rear single",
-                "R001J141": "Lavida rear double",
-                "R001J142": "Lavida rear single"
-            }
-            
-            project = base_map.get(base, "UNKNOWN")
-            if project == "UNKNOWN":
-                print(f"警告：产品型号 '{pn}' 没有匹配到项目，默认放到最后")
-            return project
+            try:
+                from app.services.project_service import ProjectService
+                
+                # 先尝试完整型号匹配
+                project_code = ProjectService.get_project_by_item_brand(pn)
+                if project_code:
+                    # 获取项目名称
+                    mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                    if mappings:
+                        return mappings[0].get('ProjectName', project_code)
+                
+                # 去掉最后一位字母后缀，获取基础产品型号
+                if len(pn) > 1 and pn[-1].isalpha():
+                    base_pn = pn[:-1]  # 去掉最后一位字母
+                else:
+                    base_pn = pn
+                
+                # 尝试基础型号匹配
+                project_code = ProjectService.get_project_by_item_brand(base_pn)
+                if project_code:
+                    # 获取项目名称
+                    mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                    if mappings:
+                        return mappings[0].get('ProjectName', project_code)
+                
+                # 如果完整匹配失败，尝试基础项目匹配
+                if len(base_pn) > 1 and base_pn[-1].isdigit():
+                    base = base_pn[:-1]  # 去掉最后一位数字
+                else:
+                    base = base_pn
+                
+                project_code = ProjectService.get_project_by_item_brand(base)
+                if project_code:
+                    # 获取项目名称
+                    mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                    if mappings:
+                        return mappings[0].get('ProjectName', project_code)
+                
+                # 如果都没有匹配到，使用硬编码的备用映射
+                base_map = {
+                    "R001H368": "Passat rear double",
+                    "R001H369": "Passat rear single",
+                    "R001P320": "Tiguan L rear double",
+                    "R001P313": "Tiguan L rear single",
+                    "R001J139": "A5L rear double",
+                    "R001J140": "A5L rear single",
+                    "R001J141": "Lavida rear double",
+                    "R001J142": "Lavida rear single"
+                }
+                
+                project = base_map.get(base, "UNKNOWN")
+                if project == "UNKNOWN":
+                    print(f"警告：产品型号 '{pn}' 没有匹配到项目，默认放到最后")
+                return project
+                
+            except Exception as e:
+                print(f"❌ [project_name] 获取项目名称失败: {str(e)}")
+                return "UNKNOWN"
 
         # 7) 填充数据行
         for row_idx, (sup, pn) in enumerate(keys_all):

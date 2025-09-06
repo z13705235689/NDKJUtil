@@ -36,16 +36,14 @@ class DatabaseManager:
     def _init_embedded_db(self):
         """初始化内置数据库"""
         try:
-            # 获取exe文件所在目录
-            if getattr(sys, 'frozen', False):
-                # 打包后的exe
-                exe_dir = Path(sys.executable).parent
-            else:
-                # 开发环境
-                exe_dir = Path.cwd()
+            # 获取应用程序根目录
+            app_root = get_app_root()
             
-            # 在exe同目录下创建数据库文件
-            self.db_path = exe_dir / "mes.db"
+            # 直接使用exe文件同目录下的数据库文件
+            self.db_path = app_root / "mes.db"
+            
+            # 确保目录存在
+            app_root.mkdir(parents=True, exist_ok=True)
             
             print(f"使用内置数据库: {self.db_path}")
             

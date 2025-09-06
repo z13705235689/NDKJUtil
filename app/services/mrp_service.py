@@ -62,10 +62,11 @@ class MRPService:
 
         # 1) 成品周需求（ItemCode 维度）
         print(f"📊 [calculate_mrp_kanban] 获取成品周需求")
-        parent_weekly = MRPService._fetch_parent_weekly_demand(
+        parent_weekly, unmatched_items = MRPService._fetch_parent_weekly_demand(
             start_date, end_date, import_id, search_filter
         )
         print(f"📊 [calculate_mrp_kanban] 成品周需求：{parent_weekly}")
+        print(f"📊 [calculate_mrp_kanban] 未匹配的ItemNumber：{unmatched_items}")
 
         # 2) 展开到子件周需求
         print(f"📊 [calculate_mrp_kanban] 展开BOM到子件")
@@ -128,7 +129,22 @@ class MRPService:
             rows.append(stock_row)
 
         print(f"✅ [calculate_mrp_kanban] 计算完成，返回：weeks={len(weeks)}, rows={len(rows)}")
-        return {"weeks": weeks, "rows": rows}
+        
+        # 构建警告信息
+        warnings = []
+        if unmatched_items:
+            warnings.append(f"⚠️ 以下客户订单中的ItemNumber未找到对应的BOM或物料信息：{', '.join(unmatched_items)}")
+            warnings.append("请检查：")
+            warnings.append("1. 客户订单中的ItemNumber是否与BOM名称完全一致")
+            warnings.append("2. 物料主数据中的品牌字段是否与客户订单ItemNumber匹配")
+            warnings.append("3. BOM是否已正确创建并激活")
+        
+        return {
+            "weeks": weeks, 
+            "rows": rows,
+            "warnings": warnings,
+            "unmatched_items": unmatched_items
+        }
 
     @staticmethod
     def calculate_parent_mrp_kanban(start_date: str, end_date: str,
@@ -160,7 +176,7 @@ class MRPService:
         weeks = MRPService._gen_weeks(start_date, end_date, import_id)
 
         # 获取成品周需求（基于客户订单）
-        parent_weekly = MRPService._fetch_parent_weekly_demand(
+        parent_weekly, unmatched_items = MRPService._fetch_parent_weekly_demand(
             start_date, end_date, import_id, search_filter
         )
 
@@ -214,7 +230,21 @@ class MRPService:
             }
             rows.append(stock_row)
 
-        return {"weeks": weeks, "rows": rows}
+        # 构建警告信息
+        warnings = []
+        if unmatched_items:
+            warnings.append(f"⚠️ 以下客户订单中的ItemNumber未找到对应的BOM或物料信息：{', '.join(unmatched_items)}")
+            warnings.append("请检查：")
+            warnings.append("1. 客户订单中的ItemNumber是否与BOM名称完全一致")
+            warnings.append("2. 物料主数据中的品牌字段是否与客户订单ItemNumber匹配")
+            warnings.append("3. BOM是否已正确创建并激活")
+        
+        return {
+            "weeks": weeks, 
+            "rows": rows,
+            "warnings": warnings,
+            "unmatched_items": unmatched_items
+        }
 
     @staticmethod
     def calculate_comprehensive_mrp_kanban(start_date: str, end_date: str,
@@ -254,10 +284,11 @@ class MRPService:
 
         # 1) 成品周需求（ItemCode 维度）
         print(f"📊 [calculate_comprehensive_mrp_kanban] 获取成品周需求")
-        parent_weekly = MRPService._fetch_parent_weekly_demand(
+        parent_weekly, unmatched_items = MRPService._fetch_parent_weekly_demand(
             start_date, end_date, import_id, search_filter
         )
         print(f"📊 [calculate_comprehensive_mrp_kanban] 成品周需求：{parent_weekly}")
+        print(f"📊 [calculate_comprehensive_mrp_kanban] 未匹配的ItemNumber：{unmatched_items}")
 
         # 2) 展开到子件周需求
         print(f"📊 [calculate_comprehensive_mrp_kanban] 展开BOM到子件")
@@ -358,7 +389,22 @@ class MRPService:
             rows.append(stock_row)
 
         print(f"✅ [calculate_comprehensive_mrp_kanban] 计算完成，返回：weeks={len(weeks)}, rows={len(rows)}")
-        return {"weeks": weeks, "rows": rows}
+        
+        # 构建警告信息
+        warnings = []
+        if unmatched_items:
+            warnings.append(f"⚠️ 以下客户订单中的ItemNumber未找到对应的BOM或物料信息：{', '.join(unmatched_items)}")
+            warnings.append("请检查：")
+            warnings.append("1. 客户订单中的ItemNumber是否与BOM名称完全一致")
+            warnings.append("2. 物料主数据中的品牌字段是否与客户订单ItemNumber匹配")
+            warnings.append("3. BOM是否已正确创建并激活")
+        
+        return {
+            "weeks": weeks, 
+            "rows": rows,
+            "warnings": warnings,
+            "unmatched_items": unmatched_items
+        }
 
     # ---------------- 明细方法 ---------------- 
     @staticmethod
@@ -420,7 +466,7 @@ class MRPService:
     @staticmethod
     def _fetch_parent_weekly_demand(start_date: str, end_date: str,
                                     import_id: Optional[int] = None,
-                                    search_filter: Optional[str] = None) -> Dict[int, Dict[str, float]]:
+                                    search_filter: Optional[str] = None) -> Tuple[Dict[int, Dict[str, float]], List[str]]:
         """
         汇总【成品/半成品】的周需求，结果键为 Items.ItemId
         依赖 CustomerOrderLines.CalendarWeek/RequiredQty
@@ -473,6 +519,8 @@ class MRPService:
         
         # 通过品牌匹配BOM来获取父物料ID
         out: Dict[int, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+        unmatched_items = []  # 收集未匹配的ItemNumber
+        
         for r in rows:
             item_number = r["ItemNumber"]  # 这是品牌字段
             calendar_week = r["CalendarWeek"]
@@ -490,9 +538,12 @@ class MRPService:
                 print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 匹配到父物料ID {parent_item_id}, CW={calendar_week}, Qty={qty}")
             else:
                 print(f"📊 [_fetch_parent_weekly_demand] 品牌 {item_number} 未找到对应BOM")
+                if item_number not in unmatched_items:
+                    unmatched_items.append(item_number)
         
         print(f"📊 [_fetch_parent_weekly_demand] 汇总结果：{out}")
-        return out
+        print(f"📊 [_fetch_parent_weekly_demand] 未匹配的ItemNumber：{unmatched_items}")
+        return out, unmatched_items
 
     @staticmethod
     def _fetch_parent_items_info(item_ids: List[int]) -> Dict[int, Dict]:

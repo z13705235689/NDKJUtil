@@ -1467,6 +1467,31 @@ class MaterialSelectionDialog(QDialog):
         self.resize(750, 500)
         self.setMinimumSize(700, 450)
         self.setModal(True)
+        # 设置全局复选框样式
+        self.setStyleSheet("""
+            QCheckBox {
+                spacing: 8px;
+                font-size: 14px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #d9d9d9;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #1890ff;
+                border-color: #1890ff;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #1890ff;
+            }
+            QCheckBox::indicator:checked:hover {
+                background-color: #40a9ff;
+                border-color: #40a9ff;
+            }
+        """)
         self.setup_ui()
         self.load_materials()
 
@@ -1629,6 +1654,35 @@ class MaterialSelectionDialog(QDialog):
         for row, material in enumerate(materials):
             # 添加复选框
             checkbox = QCheckBox()
+            # 设置复选框样式，确保在不同系统上都能正确显示
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    spacing: 8px;
+                    font-size: 14px;
+                }
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #d9d9d9;
+                    border-radius: 3px;
+                    background-color: white;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #1890ff;
+                    border-color: #1890ff;
+                }
+                QCheckBox::indicator:hover {
+                    border-color: #1890ff;
+                }
+                QCheckBox::indicator:checked:hover {
+                    background-color: #40a9ff;
+                    border-color: #40a9ff;
+                }
+            """)
+            # 强制设置复选框的文本为空，避免显示默认文本
+            checkbox.setText("")
+            # 强制更新样式
+            checkbox.update()
             checkbox.stateChanged.connect(lambda state, r=row: self.on_checkbox_changed(state, r))
             self.materials_table.setCellWidget(row, 0, checkbox)
             
@@ -3585,34 +3639,11 @@ class BomImportDialog(QDialog):
         """)
         
         format_content = """
-文件格式要求（支持CSV和Excel格式）：
-
-Excel表格格式示例（矩阵格式）：
-
-    A                           B                 C                 D                  E
-1                             型号A           型号B          型号C           型号D
-2                             规格1           规格2          规格3           规格4
-3 零部件规格1          1.0               2.0              0.0                1.5
-4 零部件规格2          0.5               1.5              2.0                0.0
-5 零部件规格3          0.0               0.0              1.0                2.0
-6 零部件规格4          1.0               1.0              1.0                1.0
-
-数据说明：
-• A列：零部件规格（第3行开始）
-• B-E列：成品品牌和规格（第1-2行）
-• 第1行：成品商品品牌（用于BOM名称匹配）
-• 第2行：成品规格型号
-• 第3行开始：零部件规格 + 用量数据
-
 导入规则说明：
-1. A1、A2单元格必须为空（保留空白）
-2. B1-E1填写成品品牌（作为BOM名称的关键字段）
-3. B2-E2填写成品规格型号
-4. A3-A6填写零部件规格
-5. B3-E6填写用量数据
-6. 数量为0表示不使用该零部件（会从BOM中移除）
-7. 系统会自动匹配成品和零部件物料（基于品牌和规格）
-8. 支持的文件格式：.csv, .xlsx, .xls
+1、导入模板示例请参考导出的表格模板，按照模板格式导入
+2. 数量为0表示不使用该零部件（会从BOM中移除）
+3. 系统会自动匹配成品和零部件物料（基于品牌和规格）
+4. 支持的文件格式：.csv, .xlsx, .xls
 
 智能匹配规则：
 • 成品匹配：优先使用品牌字段匹配BOM名称，其次使用其他产品信息

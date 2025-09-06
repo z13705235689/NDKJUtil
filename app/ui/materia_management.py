@@ -697,6 +697,31 @@ class ItemEditor(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.selected_items = []  # 存储选中的物料ID
+        # 设置全局复选框样式
+        self.setStyleSheet("""
+            QCheckBox {
+                spacing: 8px;
+                font-size: 14px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #d9d9d9;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #1890ff;
+                border-color: #1890ff;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #1890ff;
+            }
+            QCheckBox::indicator:checked:hover {
+                background-color: #40a9ff;
+                border-color: #40a9ff;
+            }
+        """)
         self.setup_ui()
         self.load_items()
     
@@ -1626,6 +1651,35 @@ class ItemEditor(QWidget):
         for row, item in enumerate(items):
             # 选择复选框
             checkbox = QCheckBox()
+            # 设置复选框样式，确保在不同系统上都能正确显示
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    spacing: 8px;
+                    font-size: 14px;
+                }
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid #d9d9d9;
+                    border-radius: 3px;
+                    background-color: white;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #1890ff;
+                    border-color: #1890ff;
+                }
+                QCheckBox::indicator:hover {
+                    border-color: #1890ff;
+                }
+                QCheckBox::indicator:checked:hover {
+                    background-color: #40a9ff;
+                    border-color: #40a9ff;
+                }
+            """)
+            # 强制设置复选框的文本为空，避免显示默认文本
+            checkbox.setText("")
+            # 强制更新样式
+            checkbox.update()
             # 将行号和物料ID存储在复选框的属性中
             checkbox.setProperty("row", row)
             checkbox.setProperty("item_id", item['ItemId'])

@@ -579,6 +579,13 @@ class MRPViewer(QWidget):
         # 保存当前数据用于导出
         self._current_data = data
         
+        # 检查并显示警告信息
+        warnings = data.get("warnings", [])
+        if warnings:
+            print(f"⚠️ [render_board] 发现警告信息：{warnings}")
+            warning_text = "\n".join(warnings)
+            QMessageBox.warning(self, "MRP计算警告", warning_text)
+        
         if not data:
             print(f"❌ [render_board] 数据为空，清空表格")
             self.tbl.setRowCount(0); self.tbl.setColumnCount(0); return
