@@ -11,17 +11,21 @@ from typing import Optional, List, Dict
 from datetime import datetime, timedelta
 
 from PySide6.QtCore import Qt, QDate, Signal, QTimer, QRect
-from PySide6.QtGui import QFont, QColor, QPainter
+from PySide6.QtGui import QFont, QColor, QPainter, QBrush
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QFrame, QLineEdit, QComboBox, QAbstractItemView,
     QMessageBox, QTabWidget, QGroupBox, QGridLayout, QCheckBox, QDialog,
     QHeaderView, QDateEdit, QListWidget, QListWidgetItem, QSplitter,
     QSizePolicy, QScrollArea, QFormLayout, QDialogButtonBox, QTextEdit,
-    QSpacerItem, QAbstractScrollArea
+    QSpacerItem, QAbstractScrollArea, QFileDialog
 )
 
 from app.services.scheduling_order_service import SchedulingOrderService
+import pandas as pd
+import openpyxl
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 
 class TwoRowHeader(QHeaderView):
@@ -56,7 +60,20 @@ class TwoRowHeader(QHeaderView):
         bottom = item.data(Qt.UserRole) if (item and item.data(Qt.UserRole) is not None) else ""
 
         # 检查是否是周日，设置整列黄色背景
-        if bottom == "日":
+        # 对于MRP表格，bottom是日期，需要检查日期对应的周几
+        is_sunday = False
+        if bottom and len(bottom) == 10 and bottom.count('-') == 2:  # 日期格式 YYYY-MM-DD
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(bottom, "%Y-%m-%d").date()
+                weekday = date_obj.weekday()  # 0=Monday, 6=Sunday
+                is_sunday = (weekday == 6)
+            except:
+                pass
+        elif bottom == "日":  # 兼容旧的周几格式
+            is_sunday = True
+        
+        if is_sunday:
             painter.fillRect(rect, QColor("#fff3cd"))  # 使用更柔和的黄色
         else:
             painter.fillRect(rect, QColor("#fafafa"))  # 默认背景
@@ -69,27 +86,77 @@ class TwoRowHeader(QHeaderView):
         top_height = int(rect.height() * 0.6)  # 第一行占60%
         bottom_height = rect.height() - top_height  # 第二行占剩余部分
         
-        # 绘制第一行（日期）
-        painter.setPen(QColor("#333333"))
-        painter.setFont(self._top_font)
-        topRect = QRect(rect.left() + 1, rect.top() + 1, rect.width() - 2, top_height - 2)
-        painter.drawText(topRect, Qt.AlignCenter, str(top))
-        
-        # 绘制第二行（周几）
-        if bottom:  # 只有当有周几数据时才绘制
-            painter.setFont(self._bottom_font)
-            painter.setPen(QColor("#666666"))
+        # 对于MRP表格，第一行显示周几，第二行显示日期
+        if bottom and len(bottom) == 10 and bottom.count('-') == 2:  # 日期格式 YYYY-MM-DD
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(bottom, "%Y-%m-%d").date()
+                weekday_names = ['一', '二', '三', '四', '五', '六', '日']
+                weekday_text = weekday_names[date_obj.weekday()]
+                date_text = date_obj.strftime("%m-%d")
+                
+                # 绘制第一行（周几）
+                painter.setPen(QColor("#333333"))
+                painter.setFont(self._top_font)
+                topRect = QRect(rect.left() + 1, rect.top() + 1, rect.width() - 2, top_height - 2)
+                painter.drawText(topRect, Qt.AlignCenter, weekday_text)
+                
+                # 绘制第二行（日期）
+                painter.setFont(self._bottom_font)
+                painter.setPen(QColor("#666666"))
+                
+                margin = 2
+                bottomRect = QRect(
+                    rect.left() + margin, 
+                    rect.top() + top_height, 
+                    rect.width() - margin * 2, 
+                    bottom_height - margin
+                )
+                
+                painter.drawText(bottomRect, Qt.AlignCenter | Qt.TextWrapAnywhere, date_text)
+            except:
+                # 如果解析失败，使用原来的逻辑
+                painter.setPen(QColor("#333333"))
+                painter.setFont(self._top_font)
+                topRect = QRect(rect.left() + 1, rect.top() + 1, rect.width() - 2, top_height - 2)
+                painter.drawText(topRect, Qt.AlignCenter, str(top))
+                
+                if bottom:
+                    painter.setFont(self._bottom_font)
+                    painter.setPen(QColor("#666666"))
+                    
+                    margin = 2
+                    bottomRect = QRect(
+                        rect.left() + margin, 
+                        rect.top() + top_height, 
+                        rect.width() - margin * 2, 
+                        bottom_height - margin
+                    )
+                    
+                    painter.drawText(bottomRect, Qt.AlignCenter | Qt.TextWrapAnywhere, str(bottom))
+        else:
+            # 原来的逻辑（用于排产看板）
+            # 绘制第一行（日期）
+            painter.setPen(QColor("#333333"))
+            painter.setFont(self._top_font)
+            topRect = QRect(rect.left() + 1, rect.top() + 1, rect.width() - 2, top_height - 2)
+            painter.drawText(topRect, Qt.AlignCenter, str(top))
             
-            # 为周几预留更多边距
-            margin = 2
-            bottomRect = QRect(
-                rect.left() + margin, 
-                rect.top() + top_height, 
-                rect.width() - margin * 2, 
-                bottom_height - margin
-            )
-            
-            painter.drawText(bottomRect, Qt.AlignCenter | Qt.TextWrapAnywhere, str(bottom))
+            # 绘制第二行（周几）
+            if bottom:  # 只有当有周几数据时才绘制
+                painter.setFont(self._bottom_font)
+                painter.setPen(QColor("#666666"))
+                
+                # 为周几预留更多边距
+                margin = 2
+                bottomRect = QRect(
+                    rect.left() + margin, 
+                    rect.top() + top_height, 
+                    rect.width() - margin * 2, 
+                    bottom_height - margin
+                )
+                
+                painter.drawText(bottomRect, Qt.AlignCenter | Qt.TextWrapAnywhere, str(bottom))
         
         painter.restore()
 
@@ -225,6 +292,7 @@ class SchedulingOrderManagementWidget(QWidget):
         
         self.create_order_list_tab()
         self.create_order_detail_tab()
+        self.create_production_mrp_tab()
         
         main_layout.addWidget(self.tab_widget)
         self.setLayout(main_layout)
@@ -374,6 +442,22 @@ class SchedulingOrderManagementWidget(QWidget):
         
         kanban_btn_layout.addWidget(self.refresh_kanban_btn)
         kanban_btn_layout.addWidget(self.save_kanban_btn)
+        
+        # 导入导出按钮
+        self.export_kanban_btn = QPushButton("导出看板")
+        self.export_kanban_btn.setStyleSheet("QPushButton{background:#6f42c1;color:#fff;border:none;padding:8px 16px;border-radius:4px;}"
+                                           "QPushButton:hover{background:#5a32a3;}")
+        self.export_kanban_btn.clicked.connect(self.export_kanban_data)
+        self.export_kanban_btn.setEnabled(False)
+        
+        self.import_kanban_btn = QPushButton("导入看板")
+        self.import_kanban_btn.setStyleSheet("QPushButton{background:#fd7e14;color:#fff;border:none;padding:8px 16px;border-radius:4px;}"
+                                           "QPushButton:hover{background:#e8650e;}")
+        self.import_kanban_btn.clicked.connect(self.import_kanban_data)
+        self.import_kanban_btn.setEnabled(False)
+        
+        kanban_btn_layout.addWidget(self.export_kanban_btn)
+        kanban_btn_layout.addWidget(self.import_kanban_btn)
         kanban_btn_layout.addStretch()
         kanban_layout.addLayout(kanban_btn_layout)
         
@@ -412,6 +496,11 @@ class SchedulingOrderManagementWidget(QWidget):
         
         detail_widget.setLayout(detail_layout)
         self.tab_widget.addTab(detail_widget, "排产详情")
+    
+    def create_production_mrp_tab(self):
+        """创建生产MRP计算页签"""
+        mrp_widget = ProductionMRPWidget(self)
+        self.tab_widget.addTab(mrp_widget, "生产MRP计算")
         
         # 初始化订单选择下拉框
         self.load_order_selection()
@@ -440,11 +529,15 @@ class SchedulingOrderManagementWidget(QWidget):
                 self.load_kanban_data()
                 self.refresh_kanban_btn.setEnabled(True)
                 self.save_kanban_btn.setEnabled(True)
+                self.export_kanban_btn.setEnabled(True)
+                self.import_kanban_btn.setEnabled(True)
             else:
                 self.current_order_id = None
                 self.clear_kanban_table()
                 self.refresh_kanban_btn.setEnabled(False)
                 self.save_kanban_btn.setEnabled(False)
+                self.export_kanban_btn.setEnabled(False)
+                self.import_kanban_btn.setEnabled(False)
         except Exception as e:
             print(f"订单选择处理失败: {e}")
     
@@ -466,14 +559,14 @@ class SchedulingOrderManagementWidget(QWidget):
             products = data["products"]
             
             # 设置表格列数
-            # 固定列：产品名称、规格、品牌、项目名称
+            # 固定列：产品名称、规格、型号、项目名称
             # 动态列：每天的日期
             fixed_cols = 4
             total_cols = fixed_cols + len(date_range)
             self.kanban_table.setColumnCount(total_cols)
             
             # 设置表头
-            headers = ["产品名称", "规格", "品牌", "项目名称"]
+            headers = ["产品名称", "规格", "型号", "项目名称"]
             for date_str in date_range:
                 # 将日期转换为显示格式
                 try:
@@ -521,7 +614,7 @@ class SchedulingOrderManagementWidget(QWidget):
                 # 固定列数据
                 item_name = product.get("ItemName", "") or ""
                 item_spec = product.get("ItemSpec", "") or ""
-                item_brand = product.get("Brand", "") or ""
+                item_model = product.get("Brand", "") or ""  # 使用Brand字段作为型号
                 project_name = product.get("ProjectName", "") or ""
                 
                 # 创建QTableWidgetItem并设置文本
@@ -530,7 +623,7 @@ class SchedulingOrderManagementWidget(QWidget):
                 item1 = QTableWidgetItem()
                 item1.setText(item_spec)
                 item2 = QTableWidgetItem()
-                item2.setText(item_brand)
+                item2.setText(item_model)
                 item3 = QTableWidgetItem()
                 item3.setText(project_name)
                 
@@ -571,7 +664,7 @@ class SchedulingOrderManagementWidget(QWidget):
                     self.kanban_table.setColumnWidth(i, 150)
                 elif i == 1:  # 规格
                     self.kanban_table.setColumnWidth(i, 100)
-                elif i == 2:  # 品牌
+                elif i == 2:  # 型号
                     self.kanban_table.setColumnWidth(i, 80)
                 elif i == 3:  # 项目名称
                     self.kanban_table.setColumnWidth(i, 120)
@@ -758,6 +851,329 @@ class SchedulingOrderManagementWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"保存看板数据失败: {str(e)}")
     
+    def export_kanban_data(self):
+        """导出看板数据到Excel"""
+        if not hasattr(self, 'current_order_id') or not self.current_order_id:
+            QMessageBox.warning(self, "警告", "请先选择一个排产订单")
+            return
+        
+        try:
+            # 获取文件保存路径
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, 
+                "导出看板数据", 
+                f"排产看板_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                "Excel文件 (*.xlsx)"
+            )
+            
+            if not file_path:
+                return
+            
+            # 获取看板数据
+            data = SchedulingOrderService.get_scheduling_kanban_data(self.current_order_id)
+            if "error" in data:
+                QMessageBox.critical(self, "错误", data["error"])
+                return
+            
+            order_info = data["order_info"]
+            date_range = data["date_range"]
+            products = data["products"]
+            
+            # 创建Excel工作簿
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "排产看板"
+            
+            # 设置样式
+            header_fill = PatternFill(start_color="E6E6FA", end_color="E6E6FA", fill_type="solid")
+            sunday_fill = PatternFill(start_color="FFF3CD", end_color="FFF3CD", fill_type="solid")
+            product_fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
+            green_fill = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")  # 绿色背景，与看板一致
+            border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            center_alignment = Alignment(horizontal='center', vertical='center')
+            
+            # 直接从第1行开始，不显示基础信息
+            current_row = 1
+            
+            # 创建表头 - 第一行：产品信息列 + 日期
+            headers_row1 = ["产品名称", "规格", "型号", "项目名称"]
+            headers_row2 = ["", "", "", ""]  # 第二行：产品信息列为空，日期列显示周几
+            
+            for date_str in date_range:
+                headers_row1.append(date_str)
+                # 计算周几
+                try:
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+                    weekday_map = {
+                        0: "一", 1: "二", 2: "三", 3: "四", 
+                        4: "五", 5: "六", 6: "日"
+                    }
+                    weekday = weekday_map[date_obj.weekday()]
+                    headers_row2.append(weekday)
+                except:
+                    headers_row2.append("")
+            
+            # 写入第一行表头（日期）
+            for col, header in enumerate(headers_row1, 1):
+                cell = ws.cell(row=current_row, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = Font(bold=True)
+                cell.border = border
+                cell.alignment = center_alignment
+                
+                # 如果是日期列且是周日，设置黄色背景
+                if col > 4:  # 日期列从第5列开始
+                    try:
+                        date_obj = datetime.strptime(header, "%Y-%m-%d").date()
+                        if date_obj.weekday() == 6:  # 周日
+                            cell.fill = sunday_fill
+                    except:
+                        pass
+            
+            current_row += 1
+            
+            # 写入第二行表头（周几）
+            for col, header in enumerate(headers_row2, 1):
+                cell = ws.cell(row=current_row, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = Font(bold=True)
+                cell.border = border
+                cell.alignment = center_alignment
+                
+                # 如果是周日列，设置黄色背景
+                if col > 4 and header == "日":  # 周日列
+                    cell.fill = sunday_fill
+            
+            current_row += 1
+            
+            # 写入数据
+            for product in products:
+                # 固定列数据
+                ws.cell(row=current_row, column=1, value=product.get("ItemName", ""))
+                ws.cell(row=current_row, column=2, value=product.get("ItemSpec", ""))
+                ws.cell(row=current_row, column=3, value=product.get("Brand", ""))  # Brand字段作为型号
+                ws.cell(row=current_row, column=4, value=product.get("ProjectName", ""))
+                
+                # 设置固定列样式
+                for col in range(1, 5):
+                    cell = ws.cell(row=current_row, column=col)
+                    cell.fill = product_fill
+                    cell.border = border
+                    cell.alignment = center_alignment
+                
+                # 动态列数据（排产数量）
+                for col, date_str in enumerate(date_range, 5):
+                    qty = product["cells"].get(date_str, 0.0)
+                    cell = ws.cell(row=current_row, column=col, value=qty)
+                    cell.border = border
+                    cell.alignment = center_alignment
+                    
+                    # 设置背景色：优先检查数量，然后检查周日
+                    try:
+                        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+                        is_sunday = date_obj.weekday() == 6
+                        
+                        if qty != 0:
+                            # 不为0的数据设置绿色背景
+                            cell.fill = green_fill
+                        elif is_sunday:
+                            # 周日且为0的数据设置黄色背景
+                            cell.fill = sunday_fill
+                        # 其他情况保持默认背景（白色）
+                    except:
+                        # 如果日期解析失败，只检查数量
+                        if qty != 0:
+                            cell.fill = green_fill
+                
+                current_row += 1
+            
+            # 调整列宽
+            ws.column_dimensions['A'].width = 20  # 产品名称
+            ws.column_dimensions['B'].width = 15  # 规格
+            ws.column_dimensions['C'].width = 12  # 型号
+            ws.column_dimensions['D'].width = 15  # 项目名称
+            
+            # 设置日期列宽度
+            for col in range(5, len(headers_row1) + 1):
+                ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 10
+            
+            # 保存文件
+            wb.save(file_path)
+            QMessageBox.information(self, "成功", f"看板数据已导出到:\n{file_path}")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导出看板数据失败: {str(e)}")
+    
+    def import_kanban_data(self):
+        """从Excel导入看板数据"""
+        if not hasattr(self, 'current_order_id') or not self.current_order_id:
+            QMessageBox.warning(self, "警告", "请先选择一个排产订单")
+            return
+        
+        try:
+            # 获取文件路径
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, 
+                "导入看板数据", 
+                "", 
+                "Excel文件 (*.xlsx *.xls)"
+            )
+            
+            if not file_path:
+                return
+            
+            # 读取Excel文件
+            df = pd.read_excel(file_path, header=None)
+            
+            # 查找数据开始行（从第1行开始，跳过两行表头）
+            data_start_row = None
+            for i in range(len(df)):
+                if df.iloc[i, 0] == "产品名称":
+                    data_start_row = i
+                    break
+            
+            if data_start_row is None:
+                QMessageBox.critical(self, "错误", "Excel文件格式不正确，找不到表头")
+                return
+            
+            # 获取表头信息（使用第一行表头，包含日期）
+            headers = df.iloc[data_start_row].tolist()
+            
+            # 验证表头格式
+            expected_headers = ["产品名称", "规格", "型号", "项目名称"]
+            if not all(header in headers[:4] for header in expected_headers):
+                QMessageBox.critical(self, "错误", "Excel文件表头格式不正确")
+                return
+            
+            # 获取日期列
+            date_columns = []
+            for i, header in enumerate(headers[4:], 4):
+                if pd.notna(header):
+                    try:
+                        # 尝试解析日期
+                        if isinstance(header, str):
+                            datetime.strptime(header, "%Y-%m-%d")
+                        date_columns.append(i)
+                    except:
+                        continue
+            
+            if not date_columns:
+                QMessageBox.critical(self, "错误", "Excel文件中没有找到有效的日期列")
+                return
+            
+            # 获取当前看板数据以验证产品匹配
+            current_data = SchedulingOrderService.get_scheduling_kanban_data(self.current_order_id)
+            if "error" in current_data:
+                QMessageBox.critical(self, "错误", current_data["error"])
+                return
+            
+            current_products = current_data["products"]
+            current_date_range = current_data["date_range"]
+            
+            # 创建产品名称到ItemId的映射
+            product_map = {}
+            for product in current_products:
+                product_name = product.get("ItemName", "")
+                if product_name:
+                    product_map[product_name] = product["ItemId"]
+            
+            # 收集导入的数据
+            updates = []
+            errors = []
+            
+            for row_idx in range(data_start_row + 1, len(df)):
+                row_data = df.iloc[row_idx]
+                
+                # 获取产品名称
+                product_name = str(row_data.iloc[0]) if pd.notna(row_data.iloc[0]) else ""
+                if not product_name or product_name == "nan":
+                    continue
+                
+                # 检查产品是否存在
+                if product_name not in product_map:
+                    errors.append(f"第{row_idx + 1}行: 产品 '{product_name}' 在当前订单中不存在")
+                    continue
+                
+                item_id = product_map[product_name]
+                
+                # 处理每个日期列
+                for col_idx in date_columns:
+                    if col_idx >= len(row_data):
+                        continue
+                    
+                    # 获取日期
+                    date_header = headers[col_idx]
+                    try:
+                        if isinstance(date_header, str):
+                            date_str = datetime.strptime(date_header, "%Y-%m-%d").strftime("%Y-%m-%d")
+                        else:
+                            date_str = date_header.strftime("%Y-%m-%d")
+                    except:
+                        continue
+                    
+                    # 检查日期是否在当前日期范围内
+                    if date_str not in current_date_range:
+                        continue
+                    
+                    # 获取数量
+                    qty_value = row_data.iloc[col_idx]
+                    try:
+                        if pd.isna(qty_value):
+                            planned_qty = 0.0
+                        else:
+                            planned_qty = float(qty_value)
+                    except:
+                        errors.append(f"第{row_idx + 1}行第{col_idx + 1}列: 数量格式不正确")
+                        continue
+                    
+                    updates.append({
+                        "ItemId": item_id,
+                        "ProductionDate": date_str,
+                        "PlannedQty": planned_qty
+                    })
+            
+            # 显示错误信息
+            if errors:
+                error_msg = "导入过程中发现以下错误:\n" + "\n".join(errors[:10])
+                if len(errors) > 10:
+                    error_msg += f"\n... 还有{len(errors) - 10}个错误"
+                QMessageBox.warning(self, "导入警告", error_msg)
+            
+            if not updates:
+                QMessageBox.warning(self, "警告", "没有找到有效的数据进行导入")
+                return
+            
+            # 确认导入
+            reply = QMessageBox.question(
+                self, 
+                "确认导入", 
+                f"将导入 {len(updates)} 条排产数据，是否继续？",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if reply != QMessageBox.Yes:
+                return
+            
+            # 批量更新数据
+            success, message = SchedulingOrderService.batch_update_scheduling_lines(
+                self.current_order_id, updates
+            )
+            
+            if success:
+                QMessageBox.information(self, "成功", f"成功导入 {len(updates)} 条数据")
+                # 刷新看板显示
+                self.load_kanban_data()
+            else:
+                QMessageBox.critical(self, "错误", message)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导入看板数据失败: {str(e)}")
+    
     def load_orders(self):
         """加载排产订单列表"""
         try:
@@ -917,7 +1333,7 @@ class SchedulingOrderManagementWidget(QWidget):
             # 不再自动跳转到详情页，用户需要点击"查看"按钮
         else:
             self.current_order_id = None
-    
+            
     
     def calculate_mrp(self):
         """计算MRP"""
@@ -955,8 +1371,8 @@ class SchedulingOrderManagementWidget(QWidget):
             
             if not order_info:
                 QMessageBox.critical(self, "错误", "找不到指定的订单信息")
-                return
-            
+            return
+        
             # 打开编辑对话框
             dialog = EditOrderDialog(order_info, self)
             if dialog.exec() == QDialog.Accepted:
@@ -968,6 +1384,8 @@ class SchedulingOrderManagementWidget(QWidget):
                     updated_data["order_name"],
                     updated_data["start_date"],
                     updated_data["end_date"],
+                    None,  # status参数
+                    "System",  # updated_by参数
                     updated_data["remark"]
                 )
                 
@@ -981,10 +1399,19 @@ class SchedulingOrderManagementWidget(QWidget):
                         
                         # 如果产品列表有变化，需要更新
                         if set(current_product_ids) != set(new_product_ids):
-                            # 先删除所有现有产品
-                            SchedulingOrderService.remove_all_products_from_order(order_id)
-                            # 再添加新产品
-                            SchedulingOrderService.add_products_to_order(order_id, new_product_ids)
+                            # 删除不再需要的产品
+                            for product in current_products:
+                                if product['ItemId'] not in new_product_ids:
+                                    SchedulingOrderService.remove_product_from_order(order_id, product['ItemId'])
+                            
+                            # 添加新产品
+                            products_to_add = []
+                            for product in updated_data["selected_products"]:
+                                if product['ItemId'] not in current_product_ids:
+                                    products_to_add.append(product['ItemId'])
+                            
+                            if products_to_add:
+                                SchedulingOrderService.add_products_to_order(order_id, products_to_add)
                     
                     QMessageBox.information(self, "成功", "订单信息更新成功")
                     self.load_orders()
@@ -1757,3 +2184,668 @@ class EditOrderDialog(QDialog):
             return
         
         super().accept()
+
+
+class ProductionMRPWidget(QWidget):
+    """生产MRP计算页面"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_order_id = None
+        self.init_ui()
+    
+    def init_ui(self):
+        """初始化界面"""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(8)
+        
+        # 控制面板
+        control_group = QGroupBox("MRP计算控制")
+        control_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                color: #495057;
+                border: 1px solid #ccc;
+                margin-top: 5px;
+                padding-top: 5px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 5px;
+                padding: 0 3px 0 3px;
+            }
+        """)
+        control_layout = QVBoxLayout(control_group)
+        
+        # 订单选择
+        order_layout = QHBoxLayout()
+        order_layout.addWidget(QLabel("选择排产订单:"))
+        self.order_combo = QComboBox()
+        self.order_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #ccc;
+                font-size: 12px;
+                min-width: 200px;
+            }
+            QComboBox:focus {
+                border-color: #007bff;
+            }
+        """)
+        self.order_combo.currentTextChanged.connect(self.on_order_changed)
+        order_layout.addWidget(self.order_combo)
+        order_layout.addStretch()
+        control_layout.addLayout(order_layout)
+        
+        # 计算类型选择
+        calc_layout = QHBoxLayout()
+        calc_layout.addWidget(QLabel("计算类型:"))
+        self.calc_type_combo = QComboBox()
+        self.calc_type_combo.addItems(["综合MRP", "零部件MRP", "成品MRP"])
+        self.calc_type_combo.setCurrentText("综合MRP")
+        self.calc_type_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #ccc;
+                font-size: 12px;
+                min-width: 120px;
+            }
+            QComboBox:focus {
+                border-color: #007bff;
+            }
+        """)
+        calc_layout.addWidget(self.calc_type_combo)
+        calc_layout.addStretch()
+        control_layout.addLayout(calc_layout)
+        
+        # 计算类型说明
+        type_desc_label = QLabel("综合MRP：结合成品库存和零部件库存计算；零部件MRP：展开BOM计算原材料需求；成品MRP：直接显示成品需求")
+        type_desc_label.setStyleSheet("""
+            QLabel {
+                color: #6c757d;
+                font-size: 11px;
+                font-style: italic;
+            }
+        """)
+        type_desc_label.setWordWrap(True)
+        control_layout.addWidget(type_desc_label)
+        
+        # 操作按钮
+        button_layout = QHBoxLayout()
+        
+        self.calc_btn = QPushButton("计算MRP")
+        self.calc_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:pressed {
+                background-color: #004085;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        self.calc_btn.clicked.connect(self.calculate_mrp)
+        self.calc_btn.setEnabled(False)
+        
+        self.refresh_btn = QPushButton("刷新数据")
+        self.refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+        """)
+        self.refresh_btn.clicked.connect(self.refresh_data)
+        
+        button_layout.addWidget(self.calc_btn)
+        button_layout.addWidget(self.refresh_btn)
+        button_layout.addStretch()
+        control_layout.addLayout(button_layout)
+        
+        main_layout.addWidget(control_group)
+        
+        # MRP结果表格
+        result_group = QGroupBox("MRP计算结果")
+        result_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                color: #495057;
+                border: 1px solid #ccc;
+                margin-top: 5px;
+                padding-top: 5px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 5px;
+                padding: 0 3px 0 3px;
+            }
+        """)
+        result_layout = QVBoxLayout(result_group)
+        
+        # 创建表格
+        self.mrp_table = QTableWidget()
+        self.mrp_table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #dee2e6;
+                font-size: 12px;
+                gridline-color: #dee2e6;
+                background-color: white;
+                selection-background-color: #e3f2fd;
+            }
+            QTableWidget::item {
+                padding: 6px 8px;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            QTableWidget::item:selected {
+                background-color: #e3f2fd;
+                border: 2px solid #007bff;
+                border-radius: 2px;
+            }
+            QTableWidget::item:selected:focus {
+                background-color: transparent !important;
+            }
+            QHeaderView::section {
+                background-color: #f8f9fa;
+                color: #495057;
+                padding: 8px 6px;
+                border: none;
+                border-bottom: 2px solid #dee2e6;
+                font-weight: 600;
+                font-size: 12px;
+            }
+        """)
+        
+        # 设置自定义表头
+        self.mrp_table.setHorizontalHeader(TwoRowHeader(Qt.Horizontal, self.mrp_table))
+        
+        # 禁用交替行颜色
+        self.mrp_table.setAlternatingRowColors(False)
+        
+        # 设置表格属性
+        self.mrp_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.mrp_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.mrp_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        
+        result_layout.addWidget(self.mrp_table)
+        main_layout.addWidget(result_group)
+        
+        # 加载订单列表
+        self.load_orders()
+    
+    def load_orders(self):
+        """加载排产订单列表"""
+        try:
+            orders = SchedulingOrderService.get_scheduling_orders()
+            self.order_combo.clear()
+            self.order_combo.addItem("请选择排产订单", None)
+            
+            for order in orders:
+                display_text = f"{order['OrderName']} ({order['StartDate']} ~ {order['EndDate']})"
+                self.order_combo.addItem(display_text, order['OrderId'])
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"加载订单列表失败: {str(e)}")
+    
+    def on_order_changed(self, text):
+        """订单选择改变时的处理"""
+        self.current_order_id = self.order_combo.currentData()
+        self.calc_btn.setEnabled(self.current_order_id is not None)
+        
+        if self.current_order_id:
+            self.load_mrp_data()
+        else:
+            self.clear_mrp_table()
+    
+    def calculate_mrp(self):
+        """计算MRP"""
+        if not self.current_order_id:
+            QMessageBox.warning(self, "警告", "请先选择一个排产订单")
+            return
+        
+        try:
+            # 获取排产订单信息
+            order_info = SchedulingOrderService.get_scheduling_order_by_id(self.current_order_id)
+            if not order_info:
+                QMessageBox.critical(self, "错误", "找不到指定的排产订单")
+                return
+            
+            start_date = order_info["StartDate"]
+            end_date = order_info["EndDate"]
+            
+            # 获取计算类型 - 与订单MRP管理保持一致
+            calc_type_text = self.calc_type_combo.currentText()
+            if calc_type_text == "零部件MRP":
+                calc_type = "child"
+            elif calc_type_text == "成品MRP":
+                calc_type = "parent"
+            else:  # 综合MRP
+                calc_type = "comprehensive"
+            
+            print(f"🔘 [calculate_mrp] 计算类型：{calc_type}")
+            
+            # 根据计算类型调用不同的计算方法 - 与订单MRP管理保持一致
+            if calc_type == "child":
+                # 计算零部件MRP - 展开BOM计算原材料需求
+                result = SchedulingOrderService.calculate_child_mrp_for_order(
+                    self.current_order_id, start_date, end_date
+                )
+            elif calc_type == "parent":
+                # 计算成品MRP - 直接显示成品需求
+                result = SchedulingOrderService.calculate_parent_mrp_for_order(
+                    self.current_order_id, start_date, end_date
+                )
+            else:  # comprehensive
+                # 计算综合MRP - 结合成品库存和零部件库存计算
+                result = SchedulingOrderService.calculate_comprehensive_mrp_for_order(
+                    self.current_order_id, start_date, end_date
+                )
+            
+            if "error" in result:
+                QMessageBox.critical(self, "错误", result["error"])
+                return
+            
+            # 显示结果
+            self.display_mrp_results(result)
+            QMessageBox.information(self, "成功", f"MRP计算完成，共计算 {len(result.get('rows', []))} 个物料")
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"计算MRP失败: {str(e)}")
+    
+    def display_mrp_results(self, result):
+        """显示MRP计算结果 - 与订单MRP管理保持一致"""
+        try:
+            # 检查数据格式 - 与订单MRP管理保持一致
+            if not result or "weeks" not in result or "rows" not in result:
+                self.clear_mrp_table()
+                return
+            
+            weeks = result.get("weeks", [])
+            rows = result.get("rows", [])
+            
+            if not rows:
+                self.clear_mrp_table()
+                return
+            
+            print(f"🎨 [display_mrp_results] 数据解析：weeks={weeks}, rows数量={len(rows)}")
+            
+            # 构建年份分组和合计列 - 与订单MRP管理保持一致
+            colspec = self._build_week_columns_with_totals(weeks)
+            
+            # 设置固定列标题 - 显示产品信息和MRP信息
+            fixed_headers = ["产品名称", "规格", "品牌", "项目名称", "行别", "期初库存"]
+            
+            # 设置列数和标题
+            headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
+            self.mrp_table.setColumnCount(headers_count)
+            
+            # 设置固定列标题
+            for i, title in enumerate(fixed_headers):
+                item = QTableWidgetItem(title)
+                self.mrp_table.setHorizontalHeaderItem(i, item)
+            
+            # 设置周列和年份合计列标题
+            base_col = len(fixed_headers)
+            for i, (kind, val) in enumerate(colspec):
+                if kind == "week":
+                    # val 现在是具体的订单日期 (YYYY-MM-DD)
+                    # CW位置显示日期，日期位置显示周几
+                    try:
+                        from datetime import datetime
+                        date_obj = datetime.strptime(val, "%Y-%m-%d").date()
+                        # CW位置显示日期 (MM-DD格式)
+                        date_text = date_obj.strftime("%m-%d")
+                        it = QTableWidgetItem(date_text)
+                        it.setData(Qt.UserRole, val)  # 存储具体的订单日期
+                    except:
+                        it = QTableWidgetItem(val)
+                else:
+                    it = QTableWidgetItem(f"{val}合计")
+                self.mrp_table.setHorizontalHeaderItem(base_col + i, it)
+            
+            # 设置总计列标题
+            self.mrp_table.setHorizontalHeaderItem(headers_count - 1, QTableWidgetItem("Total"))
+            
+            # 更新表头显示
+            try:
+                hdr = self.mrp_table.horizontalHeader()
+                hdr.updateGeometry()
+                hdr.repaint()
+            except Exception as e:
+                print(f"更新表头时出错: {e}")
+            
+            # 增加行用于显示总计行
+            calc_type = self.calc_type_combo.currentText()
+            if calc_type == "成品MRP":
+                # 成品MRP：数据行 + 生产计划总计行 + 即时库存总计行
+                self.mrp_table.setRowCount(len(rows) + 2)  # +2 for total rows
+            else:
+                # 零部件MRP：数据行 + 总计行
+                self.mrp_table.setRowCount(len(rows) + 1)  # +1 for total row
+            
+            # 设置颜色 - 与订单MRP管理保持一致
+            green_bg = QBrush(QColor(235, 252, 239))  # 生产计划绿色
+            red_bg = QBrush(QColor(255, 235, 238))     # 库存不足红色
+            blue_bg = QBrush(QColor(221, 235, 247))   # 合计列蓝色
+            
+            # 数据行（从第一行开始）
+            for r, row in enumerate(rows):
+                actual_row = r  # 数据行从第一行开始
+                
+                # 基本信息列 - 显示产品信息和MRP信息
+                self._set_item(actual_row, 0, row.get("ItemName", ""))
+                self._set_item(actual_row, 1, row.get("ItemSpec", ""))
+                self._set_item(actual_row, 2, row.get("Brand", ""))  # 品牌字段
+                self._set_item(actual_row, 3, row.get("ProjectName", ""))
+                self._set_item(actual_row, 4, row.get("RowType", ""))  # 行别
+                
+                # 期初库存列：综合MRP显示"XXX+XXX"格式，其他显示数字
+                start_onhand = row.get("StartOnHand", 0)
+                if isinstance(start_onhand, str) and "+" in start_onhand:
+                    # 综合MRP的"XXX+XXX"格式，直接显示
+                    self._set_item(actual_row, 5, start_onhand)
+                else:
+                    # 其他类型，格式化为数字
+                    self._set_item(actual_row, 5, self._fmt(start_onhand))
+                
+                # 基本信息列不设置背景色
+                
+                # 周数据列和年份合计列
+                row_total = 0
+                cursor_col = base_col
+                for kind, val in colspec:
+                    if kind == "week":
+                        val_float = float(row["cells"].get(val, 0.0))
+                        row_total += val_float
+                        it = self._set_item(actual_row, cursor_col, self._fmt(val_float))
+                        
+                        # 着色规则 - 与订单MRP管理保持一致：
+                        # 1. 生产计划行（非即时库存）且数值大于0时标绿色
+                        # 2. 即时库存行且数值小于0时标红色
+                        is_stock_row = (row.get("RowType") == "即时库存")
+                        if not is_stock_row and val_float > 0:
+                            it.setBackground(green_bg)  # 生产计划标绿
+                        elif is_stock_row and val_float < 0:
+                            it.setBackground(red_bg)    # 库存不足标红
+                    else:
+                        # 年份合计列 - val 现在是年份
+                        # 需要计算该年份所有日期的总和
+                        year_total = 0.0
+                        for kind2, val2 in colspec:
+                            if kind2 == "week":
+                                # val2 是具体的订单日期
+                                try:
+                                    from datetime import datetime
+                                    date_obj = datetime.strptime(val2, "%Y-%m-%d").date()
+                                    if date_obj.isocalendar()[0] == val:  # 同一年
+                                        year_total += float(row["cells"].get(val2, 0.0))
+                                except:
+                                    continue
+                        
+                        it = QTableWidgetItem(self._fmt(year_total))
+                        it.setBackground(blue_bg)  # 合计列标蓝色
+                        font = it.font()
+                        font.setBold(True)
+                        it.setFont(font)
+                        self.mrp_table.setItem(actual_row, cursor_col, it)
+                        row_total += year_total
+                    
+                    cursor_col += 1
+                
+                # 总计列
+                total_item = QTableWidgetItem(self._fmt(row_total))
+                total_item.setBackground(blue_bg)  # 总计列标蓝色
+                font = total_item.font()
+                font.setBold(True)
+                total_item.setFont(font)
+                self.mrp_table.setItem(actual_row, headers_count - 1, total_item)
+            
+            # 总计行 - 与订单MRP管理保持一致
+            calc_type = self.calc_type_combo.currentText()
+            if calc_type == "成品MRP":
+                # 成品MRP：两行总计行
+                # 第一行：生产计划总计
+                plan_total_row = len(rows)
+                self.mrp_table.setItem(plan_total_row, 0, QTableWidgetItem("生产计划TOTAL"))
+                self.mrp_table.setItem(plan_total_row, 1, QTableWidgetItem(""))
+                self.mrp_table.setItem(plan_total_row, 2, QTableWidgetItem(""))
+                self.mrp_table.setItem(plan_total_row, 3, QTableWidgetItem(""))
+                self.mrp_table.setItem(plan_total_row, 4, QTableWidgetItem("生产计划"))
+                self.mrp_table.setItem(plan_total_row, 5, QTableWidgetItem(""))
+                
+                # 第二行：即时库存总计
+                stock_total_row = len(rows) + 1
+                self.mrp_table.setItem(stock_total_row, 0, QTableWidgetItem("即时库存TOTAL"))
+                self.mrp_table.setItem(stock_total_row, 1, QTableWidgetItem(""))
+                self.mrp_table.setItem(stock_total_row, 2, QTableWidgetItem(""))
+                self.mrp_table.setItem(stock_total_row, 3, QTableWidgetItem(""))
+                self.mrp_table.setItem(stock_total_row, 4, QTableWidgetItem("即时库存"))
+                self.mrp_table.setItem(stock_total_row, 5, QTableWidgetItem(""))
+                
+                # 计算生产计划总计（只统计生产计划行）
+                for col in range(base_col, headers_count):
+                    plan_sum = 0
+                    for r in range(0, plan_total_row):  # 从0开始，没有日期行
+                        it = self.mrp_table.item(r, col)
+                        row_type_it = self.mrp_table.item(r, 4)  # 行别列
+                        try:
+                            if it and it.text().strip() and row_type_it and row_type_it.text() == "生产计划":
+                                plan_sum += float(it.text().replace(',', ''))
+                        except:
+                            pass
+                    item = QTableWidgetItem(self._fmt(plan_sum))
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
+                    item.setBackground(green_bg)  # 生产计划总计标绿色
+                    self.mrp_table.setItem(plan_total_row, col, item)
+                
+                # 计算即时库存总计（只统计即时库存行）
+                for col in range(base_col, headers_count):
+                    stock_sum = 0
+                    for r in range(0, stock_total_row):  # 从0开始，没有日期行
+                        it = self.mrp_table.item(r, col)
+                        row_type_it = self.mrp_table.item(r, 4)  # 行别列
+                        try:
+                            if it and it.text().strip() and row_type_it and row_type_it.text() == "即时库存":
+                                stock_sum += float(it.text().replace(',', ''))
+                        except:
+                            pass
+                    item = QTableWidgetItem(self._fmt(stock_sum))
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
+                    item.setBackground(red_bg)  # 即时库存总计标红色
+                    self.mrp_table.setItem(stock_total_row, col, item)
+            else:
+                # 零部件MRP：一行总计行
+                total_row = len(rows)
+                self.mrp_table.setItem(total_row, 0, QTableWidgetItem("TOTAL"))
+                self.mrp_table.setItem(total_row, 1, QTableWidgetItem(""))
+                self.mrp_table.setItem(total_row, 2, QTableWidgetItem(""))
+                self.mrp_table.setItem(total_row, 3, QTableWidgetItem(""))
+                self.mrp_table.setItem(total_row, 4, QTableWidgetItem(""))
+                self.mrp_table.setItem(total_row, 5, QTableWidgetItem(""))
+                
+                # 计算总计行的数据
+                for col in range(base_col, headers_count):
+                    col_sum = 0
+                    for r in range(len(rows)):
+                        it = self.mrp_table.item(r, col)
+                        try:
+                            if it and it.text().strip():
+                                col_sum += float(it.text().replace(',', ''))
+                        except:
+                            pass
+                    
+                    item = QTableWidgetItem(self._fmt(col_sum))
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
+                    item.setBackground(blue_bg)  # 总计行标蓝色
+                    self.mrp_table.setItem(total_row, col, item)
+            
+            # 设置列宽
+            header = self.mrp_table.horizontalHeader()
+            
+            # 设置固定列的宽度
+            self.mrp_table.setColumnWidth(0, 150)  # 产品名称
+            self.mrp_table.setColumnWidth(1, 100)  # 规格
+            self.mrp_table.setColumnWidth(2, 100)  # 品牌
+            self.mrp_table.setColumnWidth(3, 120)  # 项目名称
+            self.mrp_table.setColumnWidth(4, 80)   # 行别
+            self.mrp_table.setColumnWidth(5, 100)  # 期初库存
+            
+            # 设置日期列为固定宽度
+            for c in range(len(fixed_headers), headers_count):
+                header.setSectionResizeMode(c, QHeaderView.Fixed)
+                self.mrp_table.setColumnWidth(c, 80)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"显示MRP结果失败: {str(e)}")
+    
+    def _set_item(self, row, col, text):
+        """设置表格项 - 与订单MRP管理保持一致"""
+        item = QTableWidgetItem(str(text))
+        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+        self.mrp_table.setItem(row, col, item)
+        return item
+    
+    def _build_week_columns_with_totals(self, weeks):
+        """构建周列和年份合计列 - 与订单MRP管理保持一致"""
+        colspec = []
+        current_year = None
+        
+        for week in weeks:
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(week, "%Y-%m-%d").date()
+                year = date_obj.isocalendar()[0]
+                
+                # 如果年份变化，添加年份合计列
+                if current_year is not None and year != current_year:
+                    colspec.append(("year_total", current_year))
+                
+                colspec.append(("week", week))
+                current_year = year
+            except:
+                colspec.append(("week", week))
+        
+        # 添加最后一个年份的合计列
+        if current_year is not None:
+            colspec.append(("year_total", current_year))
+        
+        return colspec
+    
+    def _fmt(self, val):
+        """格式化数字显示 - 与订单MRP保持一致"""
+        try:
+            if val is None:
+                return "0"
+            f = float(val)
+            if f == 0:
+                return "0"
+            elif f == int(f):
+                return str(int(f))
+            else:
+                return f"{f:.2f}".rstrip('0').rstrip('.')
+        except:
+            return str(val)
+    
+    def clear_mrp_table(self):
+        """清空MRP表格"""
+        self.mrp_table.clearContents()
+        self.mrp_table.setRowCount(0)
+        self.mrp_table.setColumnCount(0)
+    
+    def refresh_data(self):
+        """刷新数据"""
+        self.load_orders()
+        if self.current_order_id:
+            self.load_mrp_data()
+    
+    def load_mrp_data(self):
+        """加载已保存的MRP数据"""
+        if not self.current_order_id:
+            return
+        
+        try:
+            # 获取已保存的MRP结果
+            mrp_results = SchedulingOrderService.get_mrp_results(self.current_order_id)
+            
+            if mrp_results:
+                # 重新组织数据格式
+                organized_data = self._organize_mrp_data(mrp_results)
+                self.display_mrp_results(organized_data)
+            else:
+                self.clear_mrp_table()
+                
+        except Exception as e:
+            print(f"加载MRP数据失败: {e}")
+            self.clear_mrp_table()
+    
+    def _organize_mrp_data(self, mrp_results):
+        """重新组织MRP数据格式"""
+        try:
+            # 按物料分组
+            items_data = {}
+            date_range = set()
+            
+            for result in mrp_results:
+                item_id = result["ItemId"]
+                if item_id not in items_data:
+                    items_data[item_id] = {
+                        "ItemId": item_id,
+                        "ItemCode": result["ItemCode"],
+                        "ItemName": result["ItemName"],
+                        "ItemSpec": result["ItemSpec"],
+                        "Brand": result["Brand"],  # 型号
+                        "ItemType": result["ItemType"],
+                        "cells": {}
+                    }
+                
+                date_str = result["ProductionDate"]
+                date_range.add(date_str)
+                
+                items_data[item_id]["cells"][date_str] = {
+                    "RequiredQty": result["RequiredQty"],
+                    "OnHandQty": result["OnHandQty"],
+                    "NetQty": result["NetQty"]
+                }
+            
+            # 转换为列表并排序
+            mrp_list = []
+            for item_id in sorted(items_data.keys(), 
+                                key=lambda i: (items_data[i]["ItemType"], items_data[i]["ItemCode"])):
+                mrp_list.append(items_data[item_id])
+            
+            return {
+                "order_info": {"OrderName": "已保存的MRP数据"},
+                "date_range": sorted(list(date_range)),
+                "mrp_results": mrp_list
+            }
+            
+        except Exception as e:
+            print(f"组织MRP数据失败: {e}")
+            return {"error": f"组织MRP数据失败: {str(e)}"}

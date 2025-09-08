@@ -90,13 +90,16 @@ class BomService:
             sql = """
                 SELECT bl.*, i.ItemCode as ChildItemCode, i.CnName as ChildItemName,
                        i.ItemType as ChildItemType, i.ItemSpec as ChildItemSpec,
-                       i.Brand as ChildItemBrand
+                       i.Brand as ChildItemBrand, 
+                       COALESCE(pm.ProjectName, '') as ChildItemProjectName
                 FROM BomLines bl
                 JOIN Items i ON bl.ChildItemId = i.ItemId
+                LEFT JOIN ProjectMappings pm ON i.ItemId = pm.ItemId AND pm.IsActive = 1
                 WHERE bl.BomId = ?
                 ORDER BY bl.LineId
             """
-            return query_all(sql, (bom_id,))
+            results = query_all(sql, (bom_id,))
+            return [dict(row) for row in results]
         except Exception as e:
             raise Exception(f"获取BOM明细失败: {str(e)}")
     
@@ -561,6 +564,8 @@ class BomService:
                     'ItemName': line['ChildItemName'],
                     'ItemSpec': line['ChildItemSpec'],
                     'ItemType': line['ChildItemType'],
+                    'Brand': line.get('ChildItemBrand', ''),
+                    'ProjectName': line.get('ChildItemProjectName', ''),
                     'QtyPer': line['QtyPer'],
                     'ActualQty': actual_qty,
                     'ScrapFactor': line['ScrapFactor'],

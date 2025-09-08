@@ -76,7 +76,7 @@ class SchedulingOrderService:
     
     @staticmethod
     def update_scheduling_order(order_id: int, order_name: str = None, 
-                              start_date: str = None, status: str = None, 
+                              start_date: str = None, end_date: str = None, status: str = None, 
                               updated_by: str = "System", remark: str = None) -> Tuple[bool, str]:
         """更新排产订单"""
         try:
@@ -87,13 +87,18 @@ class SchedulingOrderService:
                 update_fields.append("OrderName = ?")
                 params.append(order_name)
             if start_date is not None:
-                # 重新计算结束日期
-                start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
-                end_dt = start_dt + timedelta(days=30)
-                end_date = end_dt.strftime("%Y-%m-%d")
                 update_fields.append("StartDate = ?")
+                params.append(start_date)
+                
+                # 如果没有提供结束日期，则自动计算
+                if end_date is None:
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+                    end_dt = start_dt + timedelta(days=30)
+                    end_date = end_dt.strftime("%Y-%m-%d")
+            
+            if end_date is not None:
                 update_fields.append("EndDate = ?")
-                params.extend([start_date, end_date])
+                params.append(end_date)
             if status is not None:
                 update_fields.append("Status = ?")
                 params.append(status)
@@ -255,10 +260,15 @@ class SchedulingOrderService:
             
             # 首先获取订单中的所有产品
             products_sql = """
-                SELECT ItemId, ItemCode, ItemName, ItemSpec, Brand, ProjectName
-                FROM SchedulingOrderProducts
-                WHERE OrderId = ?
-                ORDER BY ItemCode
+                SELECT sop.ItemId, sop.ItemCode, sop.ItemName, sop.ItemSpec, 
+                       COALESCE(i.Brand, '') as Brand,
+                       COALESCE(pm.ProjectName, '') as ProjectName,
+                       i.ItemType
+                FROM SchedulingOrderProducts sop
+                LEFT JOIN Items i ON sop.ItemId = i.ItemId
+                LEFT JOIN ProjectMappings pm ON sop.ItemId = pm.ItemId AND pm.IsActive = 1
+                WHERE sop.OrderId = ?
+                ORDER BY sop.ItemCode
             """
             product_rows = query_all(products_sql, (order_id,))
             
@@ -294,6 +304,7 @@ class SchedulingOrderService:
                     "ItemSpec": row_dict["ItemSpec"] or "",
                     "Brand": row_dict["Brand"] or "",
                     "ProjectName": row_dict["ProjectName"] or "",
+                    "ItemType": row_dict["ItemType"] or "",
                     "cells": {}
                 }
                 
@@ -382,6 +393,341 @@ class SchedulingOrderService:
         except Exception as e:
             return False, f"批量更新失败: {str(e)}"
     
+    @staticmethod
+    def calculate_child_mrp_for_order(order_id: int, start_date: str, end_date: str) -> Dict:
+        """计算零部件MRP - 与订单MRP管理保持一致"""
+        try:
+            print(f"📊 [calculate_child_mrp_for_order] 开始计算零部件MRP")
+            
+            # 生成周列表
+            weeks = SchedulingOrderService._gen_weeks_from_dates(start_date, end_date)
+            
+            # 获取排产订单的成品周需求
+            parent_weekly = SchedulingOrderService._fetch_scheduling_parent_weekly_demand(order_id, weeks)
+            
+            # 展开到子件周需求
+            child_weekly, child_meta = SchedulingOrderService._expand_to_child_weekly(parent_weekly, ("RM", "PKG"))
+            
+            # 获取期初库存
+            onhand_all = SchedulingOrderService._fetch_onhand_total()
+            
+            # 构建结果
+            rows = []
+            for item_id, meta in child_meta.items():
+                # 订单计划行
+                plan_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "生产计划",
+                    "StartOnHand": onhand_all.get(item_id, 0.0),
+                    "cells": {}
+                }
+                
+                # 即时库存行
+                stock_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "即时库存",
+                    "StartOnHand": onhand_all.get(item_id, 0.0),
+                    "cells": {}
+                }
+                
+                # 填充周数据
+                for week in weeks:
+                    plan_qty = child_weekly.get(item_id, {}).get(week, 0.0)
+                    plan_row["cells"][week] = plan_qty
+                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                
+                rows.extend([plan_row, stock_row])
+            
+            return {
+                "weeks": weeks,
+                "rows": rows
+            }
+            
+        except Exception as e:
+            return {"error": f"计算零部件MRP失败: {str(e)}"}
+    
+    @staticmethod
+    def calculate_parent_mrp_for_order(order_id: int, start_date: str, end_date: str) -> Dict:
+        """计算成品MRP - 与订单MRP管理保持一致"""
+        try:
+            print(f"📊 [calculate_parent_mrp_for_order] 开始计算成品MRP")
+            
+            # 生成周列表
+            weeks = SchedulingOrderService._gen_weeks_from_dates(start_date, end_date)
+            
+            # 获取排产订单的成品周需求
+            parent_weekly = SchedulingOrderService._fetch_scheduling_parent_weekly_demand(order_id, weeks)
+            
+            # 获取成品信息
+            parent_meta = SchedulingOrderService._fetch_parent_meta_from_scheduling(order_id)
+            
+            # 获取期初库存
+            onhand_all = SchedulingOrderService._fetch_onhand_total()
+            
+            # 构建结果
+            rows = []
+            for item_id, meta in parent_meta.items():
+                # 订单计划行
+                plan_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "生产计划",
+                    "StartOnHand": onhand_all.get(item_id, 0.0),
+                    "cells": {}
+                }
+                
+                # 即时库存行
+                stock_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "即时库存",
+                    "StartOnHand": onhand_all.get(item_id, 0.0),
+                    "cells": {}
+                }
+                
+                # 填充周数据
+                for week in weeks:
+                    plan_qty = parent_weekly.get(item_id, {}).get(week, 0.0)
+                    plan_row["cells"][week] = plan_qty
+                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                
+                rows.extend([plan_row, stock_row])
+            
+            return {
+                "weeks": weeks,
+                "rows": rows
+            }
+            
+        except Exception as e:
+            return {"error": f"计算成品MRP失败: {str(e)}"}
+    
+    @staticmethod
+    def calculate_comprehensive_mrp_for_order(order_id: int, start_date: str, end_date: str) -> Dict:
+        """计算综合MRP - 与订单MRP管理保持一致"""
+        try:
+            print(f"📊 [calculate_comprehensive_mrp_for_order] 开始计算综合MRP")
+            
+            # 生成周列表
+            weeks = SchedulingOrderService._gen_weeks_from_dates(start_date, end_date)
+            
+            # 获取排产订单的成品周需求
+            parent_weekly = SchedulingOrderService._fetch_scheduling_parent_weekly_demand(order_id, weeks)
+            
+            # 展开到子件周需求
+            child_weekly, child_meta = SchedulingOrderService._expand_to_child_weekly(parent_weekly, ("RM", "PKG"))
+            
+            # 获取成品信息
+            parent_meta = SchedulingOrderService._fetch_parent_meta_from_scheduling(order_id)
+            
+            # 获取期初库存
+            onhand_all = SchedulingOrderService._fetch_onhand_total()
+            
+            # 构建结果
+            rows = []
+            
+            # 添加成品行
+            for item_id, meta in parent_meta.items():
+                # 订单计划行
+                plan_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "生产计划",
+                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{parent_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
+                    "cells": {}
+                }
+                
+                # 即时库存行
+                stock_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "即时库存",
+                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{parent_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
+                    "cells": {}
+                }
+                
+                # 填充周数据
+                for week in weeks:
+                    plan_qty = parent_weekly.get(item_id, {}).get(week, 0.0)
+                    plan_row["cells"][week] = plan_qty
+                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                
+                rows.extend([plan_row, stock_row])
+            
+            # 添加零部件行
+            for item_id, meta in child_meta.items():
+                # 订单计划行
+                plan_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "生产计划",
+                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{child_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
+                    "cells": {}
+                }
+                
+                # 即时库存行
+                stock_row = {
+                    "ItemId": item_id,
+                    "ItemCode": meta["ItemCode"],
+                    "ItemName": meta["ItemName"],
+                    "ItemSpec": meta["ItemSpec"],
+                    "ItemType": meta["ItemType"],
+                    "RowType": "即时库存",
+                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{child_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
+                    "cells": {}
+                }
+                
+                # 填充周数据
+                for week in weeks:
+                    plan_qty = child_weekly.get(item_id, {}).get(week, 0.0)
+                    plan_row["cells"][week] = plan_qty
+                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                
+                rows.extend([plan_row, stock_row])
+            
+            return {
+                "weeks": weeks,
+                "rows": rows
+            }
+            
+        except Exception as e:
+            return {"error": f"计算综合MRP失败: {str(e)}"}
+    
+    @staticmethod
+    def _gen_weeks_from_dates(start_date: str, end_date: str) -> List[str]:
+        """从日期范围生成周列表"""
+        weeks = []
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+        
+        current_dt = start_dt
+        while current_dt <= end_dt:
+            weeks.append(current_dt.strftime("%Y-%m-%d"))
+            current_dt += timedelta(days=1)
+        
+        return weeks
+    
+    @staticmethod
+    def _fetch_scheduling_parent_weekly_demand(order_id: int, weeks: List[str]) -> Dict[int, Dict[str, float]]:
+        """获取排产订单的成品周需求"""
+        parent_weekly = defaultdict(lambda: defaultdict(float))
+        
+        # 获取排产订单的成品和排产数据
+        kanban_data = SchedulingOrderService.get_scheduling_kanban_data(order_id)
+        products = kanban_data.get("products", [])
+        
+        for product in products:
+            item_id = product["ItemId"]
+            cells = product.get("cells", {})
+            
+            # 获取该物料的排产数据
+            for date_str in weeks:
+                qty = float(cells.get(date_str, 0.0))
+                if qty > 0:
+                    parent_weekly[item_id][date_str] = qty
+        
+        return parent_weekly
+    
+    @staticmethod
+    def _expand_to_child_weekly(parent_weekly: Dict[int, Dict[str, float]], include_types: Tuple[str, ...]) -> Tuple[Dict[int, Dict[str, float]], Dict[int, Dict]]:
+        """展开到子件周需求"""
+        child_weekly = defaultdict(lambda: defaultdict(float))
+        child_meta = {}
+        
+        for parent_id, wk_map in parent_weekly.items():
+            for week, qty in wk_map.items():
+                if qty <= 0:
+                    continue
+                
+                # 展开BOM
+                expanded = BomService.expand_bom(parent_id, qty)
+                for e in expanded:
+                    itype = e.get("ItemType") or ""
+                    if include_types and itype not in include_types:
+                        continue
+                    
+                    cid = int(e["ItemId"])
+                    child_weekly[cid][week] += float(e.get("ActualQty") or 0.0)
+                    
+                    if cid not in child_meta:
+                        child_meta[cid] = {
+                            "ItemId": cid,
+                            "ItemCode": e.get("ItemCode", ""),
+                            "ItemName": e.get("ItemName", ""),
+                            "ItemSpec": e.get("ItemSpec", ""),
+                            "ItemType": itype,
+                            "Brand": e.get("Brand", ""),
+                            "ProjectName": e.get("ProjectName", ""),
+                        }
+        
+        return child_weekly, child_meta
+    
+    @staticmethod
+    def _fetch_parent_meta_from_scheduling(order_id: int) -> Dict[int, Dict]:
+        """获取排产订单的成品信息"""
+        parent_meta = {}
+        
+        # 获取排产订单的成品信息
+        kanban_data = SchedulingOrderService.get_scheduling_kanban_data(order_id)
+        products = kanban_data.get("products", [])
+        
+        for product in products:
+            item_id = product["ItemId"]
+            if item_id not in parent_meta:
+                parent_meta[item_id] = {
+                    "ItemId": item_id,
+                    "ItemCode": product.get("ItemCode", ""),
+                    "ItemName": product.get("ItemName", ""),
+                    "ItemSpec": product.get("ItemSpec", ""),
+                    "ItemType": product.get("ItemType", ""),
+                    "Brand": product.get("Brand", ""),
+                    "ProjectName": product.get("ProjectName", ""),
+                }
+        
+        return parent_meta
+    
+    @staticmethod
+    def _fetch_onhand_total() -> Dict[int, float]:
+        """获取期初库存"""
+        onhand_all = {}
+        
+        try:
+            # 获取所有物料的库存
+            inventory_data = query_all("""
+                SELECT ItemId, SUM(Qty) as TotalQty
+                FROM Inventory
+                GROUP BY ItemId
+            """)
+            
+            for row in inventory_data:
+                onhand_all[row["ItemId"]] = float(row["TotalQty"] or 0.0)
+        except Exception as e:
+            print(f"获取库存数据失败: {e}")
+        
+        return onhand_all
+
     @staticmethod
     def calculate_mrp_for_order(order_id: int, include_types: Tuple[str, ...] = ("RM", "PKG")) -> Dict:
         """
