@@ -558,14 +558,32 @@ class BomService:
                 # 计算实际用量（考虑损耗）
                 actual_qty = line['QtyPer'] * qty * (1 + line['ScrapFactor'])
                 
+                # 获取Brand和ProjectName数据
+                brand_value = line.get('ChildItemBrand', '')  # 商品品牌字段
+                project_name_value = line.get('ChildItemProjectName', '')
+                
+                # 如果ProjectName为空，根据商品品牌字段从项目映射表获取
+                if not project_name_value and brand_value:
+                    try:
+                        from app.services.project_service import ProjectService
+                        project_code = ProjectService.get_project_by_item_brand(brand_value)
+                        if project_code:
+                            mappings = ProjectService.get_project_mappings_by_project_code(project_code)
+                            if mappings:
+                                project_name_value = mappings[0].get('ProjectName', project_code)
+                    except Exception as e:
+                        print(f"获取项目名称失败: {e}")
+                
+                print(f"🔍 [expand_bom] 展开物料 {line['ChildItemCode']}: Brand='{brand_value}', ProjectName='{project_name_value}'")
+                
                 expanded_items.append({
                     'ItemId': line['ChildItemId'],
                     'ItemCode': line['ChildItemCode'],
                     'ItemName': line['ChildItemName'],
                     'ItemSpec': line['ChildItemSpec'],
                     'ItemType': line['ChildItemType'],
-                    'Brand': line.get('ChildItemBrand', ''),
-                    'ProjectName': line.get('ChildItemProjectName', ''),
+                    'Brand': brand_value,
+                    'ProjectName': project_name_value,
                     'QtyPer': line['QtyPer'],
                     'ActualQty': actual_qty,
                     'ScrapFactor': line['ScrapFactor'],

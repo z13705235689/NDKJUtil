@@ -1,0 +1,2821 @@
+D:\WorkingSpace\PycharmProjects\NDKJUtil\.mrpenv\Scripts\python.exe D:\WorkingSpace\PycharmProjects\NDKJUtil\build.py 
+============================================================
+🚀 MRP 制造执行系统 - 打包工具
+============================================================
+📋 打包内容:
+   • 物料管理：支持启用/禁用状态
+   • BOM管理：支持导入导出、历史记录、状态检查
+   • 库存管理：自动过滤禁用物料
+   • 客户订单管理：CW日期对应显示
+   • MRP计算：综合MRP、零部件MRP、成品MRP
+   • 数据库管理：备份、恢复、初始化
+============================================================
+
+📁 步骤 1/3: 清理构建文件...
+🧹 正在清理之前的构建文件...
+   📁 删除 build 目录...
+   📁 删除 dist 目录...
+   📁 删除 release 目录...
+   ✅ NDKJ_MES.spec 文件不存在，跳过
+✅ 清理完成，共清理了 3 个文件/目录
+✅ 清理完成
+
+⚙️  步骤 2/3: 执行打包...
+🚀 开始打包...
+📋 打包参数:
+   - 单文件打包 (--onefile)
+   - 无控制台窗口 (--windowed)
+   - 优化级别 2 (--optimize=2)
+   - 包含数据文件: schema.sql, 模板文件等
+   - 隐藏导入: sqlite3, pandas, openpyxl 等
+   - 排除模块: matplotlib, scipy, PIL 等
+
+⚙️  正在执行 PyInstaller...
+⏳ 这可能需要几分钟时间，请耐心等待...
+
+482 INFO: PyInstaller: 6.11.1, contrib hooks: 2024.10
+482 INFO: Python: 3.13.0
+505 INFO: Platform: Windows-10-10.0.19045-SP0
+505 INFO: Python environment: E:\Python\Python313
+505 INFO: wrote D:\WorkingSpace\PycharmProjects\NDKJUtil\MRP.spec
+508 INFO: Module search paths (PYTHONPATH):
+['E:\\Python\\Python313\\Scripts\\pyinstaller.exe',
+ 'D:\\WorkingSpace\\PycharmProjects\\NDKJUtil',
+ 'E:\\IntelliJ\\PyCharm\\PyCharm '
+ '2024.3\\plugins\\python-ce\\helpers\\pycharm_display',
+ 'E:\\Python\\Python313\\python313.zip',
+ 'E:\\Python\\Python313\\DLLs',
+ 'E:\\Python\\Python313\\Lib',
+ 'E:\\Python\\Python313',
+ 'E:\\Python\\Python313\\Lib\\site-packages',
+ 'E:\\Python\\Python313\\Lib\\site-packages\\win32',
+ 'E:\\Python\\Python313\\Lib\\site-packages\\win32\\lib',
+ 'E:\\Python\\Python313\\Lib\\site-packages\\Pythonwin',
+ 'E:\\IntelliJ\\PyCharm\\PyCharm '
+ '2024.3\\plugins\\python-ce\\helpers\\pycharm_matplotlib_backend',
+ 'E:\\IntelliJ\\PyCharm\\PyCharm '
+ '2024.3\\plugins\\python-ce\\helpers\\pycharm_plotly_backend',
+ 'E:\\Python\\Python313\\Lib\\site-packages\\setuptools\\_vendor',
+ 'D:\\WorkingSpace\\PycharmProjects\\NDKJUtil']
+1079 INFO: Appending 'datas' from .spec
+1080 INFO: checking Analysis
+1080 INFO: Building Analysis because Analysis-00.toc is non existent
+1080 INFO: Running Analysis Analysis-00.toc
+1080 INFO: Target bytecode optimization level: 2
+1080 INFO: Initializing module dependency graph...
+1081 INFO: Initializing module graph hook caches...
+1090 INFO: Analyzing base_library.zip ...
+2845 INFO: Processing standard module hook 'hook-encodings.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+4200 INFO: Processing standard module hook 'hook-pickle.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+4885 INFO: Processing standard module hook 'hook-heapq.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+5139 INFO: Caching module dependency graph...
+5195 INFO: Looking for Python shared library...
+5198 INFO: Using Python shared library: E:\Python\Python313\python313.dll
+5198 INFO: Analyzing D:\WorkingSpace\PycharmProjects\NDKJUtil\app\ui\ui_main.py
+5275 INFO: Processing standard module hook 'hook-sqlite3.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+5814 INFO: Processing standard module hook 'hook-pandas.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+6715 INFO: Processing standard module hook 'hook-platform.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+6788 INFO: Processing standard module hook 'hook-sysconfig.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+6821 INFO: Processing standard module hook 'hook-numpy.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+8542 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+8646 INFO: Processing standard module hook 'hook-xml.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+9023 INFO: Processing standard module hook 'hook-difflib.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+10314 INFO: Processing standard module hook 'hook-pytz.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+10512 INFO: Processing standard module hook 'hook-pkg_resources.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+10514 INFO: SetuptoolsInfo: initializing cached setuptools info...
+13607 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+13627 INFO: Processing standard module hook 'hook-packaging.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+13752 INFO: Processing pre-safe-import-module hook 'hook-jaraco.text.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+13753 INFO: Setuptools: 'jaraco.text' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.jaraco.text'!
+13753 INFO: Processing pre-safe-import-module hook 'hook-platformdirs.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+13754 INFO: Setuptools: 'platformdirs' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.platformdirs'!
+13754 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+15707 INFO: Processing standard module hook 'hook-pandas.io.formats.style.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+17714 INFO: Processing standard module hook 'hook-pandas.plotting.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+18261 INFO: Processing standard module hook 'hook-openpyxl.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+18315 INFO: Processing standard module hook 'hook-lxml.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+18899 INFO: Processing standard module hook 'hook-lxml.etree.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+19156 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+21049 INFO: Processing standard module hook 'hook-sqlalchemy.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+21988 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+21990 INFO: Setuptools: 'importlib_metadata' appears to be a setuptools-vendored copy - creating alias to 'setuptools._vendor.importlib_metadata'!
+25580 INFO: Processing standard module hook 'hook-pandas.io.clipboard.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+25946 INFO: Processing pre-safe-import-module hook 'hook-six.moves.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+26609 INFO: Processing standard module hook 'hook-xml.dom.domreg.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+27630 INFO: Processing module hooks (post-graph stage)...
+27800 INFO: Processing standard module hook 'hook-lxml.isoschematron.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+27814 WARNING: Hidden import "jinja2" not found!
+28073 INFO: Processing standard module hook 'hook-sqlalchemy.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks'
+28603 WARNING: Hidden import "pysqlite2" not found!
+28702 WARNING: Hidden import "psycopg2" not found!
+30502 INFO: Processing standard module hook 'hook-lxml.objectify.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+30512 INFO: Performing binary vs. data reclassification (628 entries)
+31967 INFO: Looking for ctypes DLLs
+31996 INFO: Analyzing run-time hooks ...
+32000 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+32001 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+32009 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+32016 INFO: Including run-time hook 'pyi_rth_pkgres.py' from 'E:\\Python\\Python313\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+32040 INFO: Looking for dynamic libraries
+33245 INFO: Extra DLL search directories (AddDllDirectory): []
+33245 INFO: Extra DLL search directories (PATH): []
+33968 WARNING: Library not found: could not resolve 'msvcp140-0f2ea95580b32bcfc81c235d5751ce78.dll', dependency of 'E:\\Python\\Python313\\Lib\\site-packages\\pandas\\_libs\\window\\aggregations.cp313-win_amd64.pyd'.
+33988 INFO: Warnings written to D:\WorkingSpace\PycharmProjects\NDKJUtil\build\MRP\warn-MRP.txt
+34053 INFO: Graph cross-reference written to D:\WorkingSpace\PycharmProjects\NDKJUtil\build\MRP\xref-MRP.html
+34079 INFO: checking PYZ
+34079 INFO: Building PYZ because PYZ-00.toc is non existent
+34079 INFO: Building PYZ (ZlibArchive) D:\WorkingSpace\PycharmProjects\NDKJUtil\build\MRP\PYZ-00.pyz
+37533 INFO: Building PYZ (ZlibArchive) D:\WorkingSpace\PycharmProjects\NDKJUtil\build\MRP\PYZ-00.pyz completed successfully.
+37555 INFO: checking PKG
+37555 INFO: Building PKG because PKG-00.toc is non existent
+37555 INFO: Building PKG (CArchive) MRP.pkg
+37589 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pyexpat.pyd
+37589 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pyexpat.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37601 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\_multiprocessing.pyd
+37602 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\_multiprocessing.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37611 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\_queue.pyd
+37613 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\_queue.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37623 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\_elementtree.pyd
+37624 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\_elementtree.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37641 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\lxml\etree.cp313-win_amd64.pyd
+37641 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\lxml\\etree.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37654 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\lxml\_elementpath.cp313-win_amd64.pyd
+37655 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\lxml\\_elementpath.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37666 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\lxml\sax.cp313-win_amd64.pyd
+37666 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\lxml\\sax.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37681 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\lxml\objectify.cp313-win_amd64.pyd
+37682 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\lxml\\objectify.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37694 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\lxml\html\diff.cp313-win_amd64.pyd
+37695 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\lxml\\html\\diff.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37705 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\lxml\builder.cp313-win_amd64.pyd
+37706 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\lxml\\builder.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37720 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\win32\win32pdh.pyd
+37721 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\win32\\win32pdh.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37731 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\linalg\_umath_linalg.cp313-win_amd64.pyd
+37732 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\linalg\\_umath_linalg.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37746 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\mtrand.cp313-win_amd64.pyd
+37747 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\mtrand.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37762 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_sfc64.cp313-win_amd64.pyd
+37763 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_sfc64.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37777 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_philox.cp313-win_amd64.pyd
+37778 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_philox.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37791 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_pcg64.cp313-win_amd64.pyd
+37792 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_pcg64.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37804 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_mt19937.cp313-win_amd64.pyd
+37805 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_mt19937.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37816 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\bit_generator.cp313-win_amd64.pyd
+37817 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\bit_generator.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37831 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_generator.cp313-win_amd64.pyd
+37832 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_generator.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37844 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_bounded_integers.cp313-win_amd64.pyd
+37845 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_bounded_integers.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37857 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\random\_common.cp313-win_amd64.pyd
+37858 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\random\\_common.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37869 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\numpy\fft\_pocketfft_umath.cp313-win_amd64.pyd
+37870 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\numpy\\fft\\_pocketfft_umath.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37881 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\writers.cp313-win_amd64.pyd
+37882 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\writers.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37893 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\window\indexers.cp313-win_amd64.pyd
+37893 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\window\\indexers.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37904 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\window\aggregations.cp313-win_amd64.pyd
+37905 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\window\\aggregations.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37915 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\vectorized.cp313-win_amd64.pyd
+37916 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\vectorized.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37926 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\tzconversion.cp313-win_amd64.pyd
+37927 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\tzconversion.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37939 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\timezones.cp313-win_amd64.pyd
+37940 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\timezones.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37955 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\timestamps.cp313-win_amd64.pyd
+37956 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\timestamps.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37971 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\timedeltas.cp313-win_amd64.pyd
+37972 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\timedeltas.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+37987 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\strptime.cp313-win_amd64.pyd
+37989 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\strptime.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38006 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\period.cp313-win_amd64.pyd
+38006 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\period.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38024 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\parsing.cp313-win_amd64.pyd
+38025 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\parsing.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38044 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\offsets.cp313-win_amd64.pyd
+38044 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\offsets.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38058 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\np_datetime.cp313-win_amd64.pyd
+38059 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\np_datetime.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38071 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\nattype.cp313-win_amd64.pyd
+38072 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\nattype.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38085 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\fields.cp313-win_amd64.pyd
+38086 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\fields.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38097 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\dtypes.cp313-win_amd64.pyd
+38098 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\dtypes.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38110 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\conversion.cp313-win_amd64.pyd
+38111 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\conversion.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38122 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\ccalendar.cp313-win_amd64.pyd
+38123 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\ccalendar.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38133 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslibs\base.cp313-win_amd64.pyd
+38134 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslibs\\base.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38145 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\tslib.cp313-win_amd64.pyd
+38146 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\tslib.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38162 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\testing.cp313-win_amd64.pyd
+38163 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\testing.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38178 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\sparse.cp313-win_amd64.pyd
+38179 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\sparse.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38193 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\sas.cp313-win_amd64.pyd
+38194 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\sas.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38206 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\reshape.cp313-win_amd64.pyd
+38207 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\reshape.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38221 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\properties.cp313-win_amd64.pyd
+38222 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\properties.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38236 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\parsers.cp313-win_amd64.pyd
+38236 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\parsers.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38249 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\pandas_parser.cp313-win_amd64.pyd
+38250 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\pandas_parser.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38264 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\pandas_datetime.cp313-win_amd64.pyd
+38264 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\pandas_datetime.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38276 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\ops_dispatch.cp313-win_amd64.pyd
+38277 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\ops_dispatch.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38288 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\ops.cp313-win_amd64.pyd
+38289 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\ops.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38301 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\missing.cp313-win_amd64.pyd
+38302 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\missing.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38318 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\lib.cp313-win_amd64.pyd
+38319 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\lib.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38330 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\json.cp313-win_amd64.pyd
+38331 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\json.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38352 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\join.cp313-win_amd64.pyd
+38353 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\join.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38375 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\interval.cp313-win_amd64.pyd
+38376 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\interval.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38393 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\internals.cp313-win_amd64.pyd
+38393 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\internals.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38407 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\indexing.cp313-win_amd64.pyd
+38408 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\indexing.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38423 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\index.cp313-win_amd64.pyd
+38424 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\index.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38449 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\hashtable.cp313-win_amd64.pyd
+38450 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\hashtable.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38464 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\hashing.cp313-win_amd64.pyd
+38465 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\hashing.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38479 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\groupby.cp313-win_amd64.pyd
+38480 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\groupby.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38492 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\byteswap.cp313-win_amd64.pyd
+38493 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\byteswap.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38505 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\arrays.cp313-win_amd64.pyd
+38506 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\arrays.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38526 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pandas\_libs\algos.cp313-win_amd64.pyd
+38527 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pandas\\_libs\\algos.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38541 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\sqlalchemy\cyextension\util.cp313-win_amd64.pyd
+38541 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\sqlalchemy\\cyextension\\util.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38553 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\sqlalchemy\cyextension\resultproxy.cp313-win_amd64.pyd
+38554 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\sqlalchemy\\cyextension\\resultproxy.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38572 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\sqlalchemy\cyextension\processors.cp313-win_amd64.pyd
+38573 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\sqlalchemy\\cyextension\\processors.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38587 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\sqlalchemy\cyextension\immutabledict.cp313-win_amd64.pyd
+38589 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\sqlalchemy\\cyextension\\immutabledict.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38605 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\sqlalchemy\cyextension\collections.cp313-win_amd64.pyd
+38606 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\sqlalchemy\\cyextension\\collections.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38620 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\_overlapped.pyd
+38621 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\_overlapped.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38635 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\_asyncio.pyd
+38636 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\_asyncio.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38651 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\_mysql_connector.cp313-win_amd64.pyd
+38652 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\_mysql_connector.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38665 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\MySQLdb\_mysql.cp313-win_amd64.pyd
+38666 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\MySQLdb\\_mysql.cp313-win_amd64.pyd'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38700 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\pywin32_system32\pywintypes313.dll
+38701 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\pywin32_system32\\pywintypes313.dll'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38752 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\libmysql.dll
+38753 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\libmysql.dll'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38787 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\libcrypto-3-x64.dll
+38788 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\libcrypto-3-x64.dll'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38804 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\MSVCP140.dll
+38805 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\MSVCP140.dll'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+38825 INFO: Executing: strip C:\Users\Administrator\AppData\Local\pyinstaller\bincache10py31364bit\libssl-3-x64.dll
+38826 WARNING: Failed to run strip on 'C:\\Users\\Administrator\\AppData\\Local\\pyinstaller\\bincache10py31364bit\\libssl-3-x64.dll'!
+Traceback (most recent call last):
+  File "E:\Python\Python313\Lib\site-packages\PyInstaller\building\utils.py", line 245, in process_collected_binary
+    p = subprocess.run(
+        cmd,
+    ...<5 lines>...
+        encoding='utf-8',
+    )
+  File "E:\Python\Python313\Lib\subprocess.py", line 554, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1036, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\Python\Python313\Lib\subprocess.py", line 1548, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+FileNotFoundError: [WinError 2] 系统找不到指定的文件。
+47604 INFO: Building PKG (CArchive) MRP.pkg completed successfully.
+47611 INFO: Bootloader E:\Python\Python313\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+47611 INFO: checking EXE
+47611 INFO: Building EXE because EXE-00.toc is non existent
+47611 INFO: Building EXE from EXE-00.toc
+47611 INFO: Copying bootloader EXE to D:\WorkingSpace\PycharmProjects\NDKJUtil\dist\MRP.exe
+47613 INFO: Copying icon to EXE
+47615 INFO: Copying 0 resources to EXE
+47615 INFO: Embedding manifest in EXE
+47616 INFO: Appending PKG archive to EXE
+47629 INFO: Fixing EXE headers
+47739 INFO: Building EXE from EXE-00.toc completed successfully.
+
+✅ 打包成功！
+📊 可执行文件大小: 40.0 MB
+
+📦 步骤 3/3: 创建发布包...
+📦 正在创建发布包...
+   📁 创建 release 目录
+   📄 复制可执行文件: MRP.exe
+   ✅ 复制完成
+   📋 复制模板文件...
+     ✅ BOM导入模板.xlsx
+     ✅ BOM导入示例.xlsx
+     ✅ BOM.CSV
+     ✅ 物料导入模板.xlsx
+     ⚠️  库存导入模板.csv 不存在，跳过
+   📊 共复制了 4 个模板文件
+   📖 创建使用说明文档...
+   ✅ 使用说明文档创建完成
+   🚀 创建启动脚本...
+   ✅ 启动脚本创建完成
+   💾 创建数据库备份脚本...
+   📁 创建 backup 目录
+   ✅ 数据库备份脚本创建完成
+✅ 发布包创建完成
+
+============================================================
+🎉 打包完成！
+============================================================
+📁 发布包位置: release/
+📄 可执行文件: release/MRP.exe
+📋 使用说明: release/使用说明.txt
+🚀 启动脚本: release/启动系统.bat
+💾 备份脚本: release/数据库备份.bat
+============================================================
+✨ 现在可以将 release 文件夹分发给用户使用！
+============================================================
+
+进程已结束，退出代码为 0

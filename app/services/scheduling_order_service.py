@@ -421,6 +421,8 @@ class SchedulingOrderService:
                     "ItemName": meta["ItemName"],
                     "ItemSpec": meta["ItemSpec"],
                     "ItemType": meta["ItemType"],
+                    "Brand": meta.get("Brand", ""),
+                    "ProjectName": meta.get("ProjectName", ""),
                     "RowType": "生产计划",
                     "StartOnHand": onhand_all.get(item_id, 0.0),
                     "cells": {}
@@ -433,16 +435,24 @@ class SchedulingOrderService:
                     "ItemName": meta["ItemName"],
                     "ItemSpec": meta["ItemSpec"],
                     "ItemType": meta["ItemType"],
+                    "Brand": meta.get("Brand", ""),
+                    "ProjectName": meta.get("ProjectName", ""),
                     "RowType": "即时库存",
                     "StartOnHand": onhand_all.get(item_id, 0.0),
                     "cells": {}
                 }
                 
                 # 填充周数据
+                start_onhand = onhand_all.get(item_id, 0.0)
+                running_stock = start_onhand
+                
                 for week in weeks:
                     plan_qty = child_weekly.get(item_id, {}).get(week, 0.0)
                     plan_row["cells"][week] = plan_qty
-                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                    
+                    # 即时库存：本周库存 = 上周库存 - 本周计划
+                    running_stock = running_stock - plan_qty
+                    stock_row["cells"][week] = running_stock
                 
                 rows.extend([plan_row, stock_row])
             
@@ -482,6 +492,8 @@ class SchedulingOrderService:
                     "ItemName": meta["ItemName"],
                     "ItemSpec": meta["ItemSpec"],
                     "ItemType": meta["ItemType"],
+                    "Brand": meta.get("Brand", ""),
+                    "ProjectName": meta.get("ProjectName", ""),
                     "RowType": "生产计划",
                     "StartOnHand": onhand_all.get(item_id, 0.0),
                     "cells": {}
@@ -494,16 +506,24 @@ class SchedulingOrderService:
                     "ItemName": meta["ItemName"],
                     "ItemSpec": meta["ItemSpec"],
                     "ItemType": meta["ItemType"],
+                    "Brand": meta.get("Brand", ""),
+                    "ProjectName": meta.get("ProjectName", ""),
                     "RowType": "即时库存",
                     "StartOnHand": onhand_all.get(item_id, 0.0),
                     "cells": {}
                 }
                 
                 # 填充周数据
+                start_onhand = onhand_all.get(item_id, 0.0)
+                running_stock = start_onhand
+                
                 for week in weeks:
                     plan_qty = parent_weekly.get(item_id, {}).get(week, 0.0)
                     plan_row["cells"][week] = plan_qty
-                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                    
+                    # 即时库存：本周库存 = 上周库存 - 本周计划
+                    running_stock = running_stock - plan_qty
+                    stock_row["cells"][week] = running_stock
                 
                 rows.extend([plan_row, stock_row])
             
@@ -536,45 +556,16 @@ class SchedulingOrderService:
             # 获取期初库存
             onhand_all = SchedulingOrderService._fetch_onhand_total()
             
-            # 构建结果
+            # 构建结果 - 综合MRP只显示零部件，不显示成品
             rows = []
-            
-            # 添加成品行
-            for item_id, meta in parent_meta.items():
-                # 订单计划行
-                plan_row = {
-                    "ItemId": item_id,
-                    "ItemCode": meta["ItemCode"],
-                    "ItemName": meta["ItemName"],
-                    "ItemSpec": meta["ItemSpec"],
-                    "ItemType": meta["ItemType"],
-                    "RowType": "生产计划",
-                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{parent_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
-                    "cells": {}
-                }
-                
-                # 即时库存行
-                stock_row = {
-                    "ItemId": item_id,
-                    "ItemCode": meta["ItemCode"],
-                    "ItemName": meta["ItemName"],
-                    "ItemSpec": meta["ItemSpec"],
-                    "ItemType": meta["ItemType"],
-                    "RowType": "即时库存",
-                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{parent_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
-                    "cells": {}
-                }
-                
-                # 填充周数据
-                for week in weeks:
-                    plan_qty = parent_weekly.get(item_id, {}).get(week, 0.0)
-                    plan_row["cells"][week] = plan_qty
-                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
-                
-                rows.extend([plan_row, stock_row])
             
             # 添加零部件行
             for item_id, meta in child_meta.items():
+                # 计算总库存（期初库存+第一周生产计划）
+                start_onhand = onhand_all.get(item_id, 0.0)
+                first_week_plan = child_weekly.get(item_id, {}).get(weeks[0], 0.0)
+                total_stock = start_onhand + first_week_plan
+                
                 # 订单计划行
                 plan_row = {
                     "ItemId": item_id,
@@ -582,8 +573,11 @@ class SchedulingOrderService:
                     "ItemName": meta["ItemName"],
                     "ItemSpec": meta["ItemSpec"],
                     "ItemType": meta["ItemType"],
+                    "Brand": meta.get("Brand", ""),
+                    "ProjectName": meta.get("ProjectName", ""),
                     "RowType": "生产计划",
-                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{child_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
+                    "StartOnHand": f"{start_onhand}+{first_week_plan}",
+                    "TotalStock": total_stock,
                     "cells": {}
                 }
                 
@@ -594,16 +588,25 @@ class SchedulingOrderService:
                     "ItemName": meta["ItemName"],
                     "ItemSpec": meta["ItemSpec"],
                     "ItemType": meta["ItemType"],
+                    "Brand": meta.get("Brand", ""),
+                    "ProjectName": meta.get("ProjectName", ""),
                     "RowType": "即时库存",
-                    "StartOnHand": f"{onhand_all.get(item_id, 0.0)}+{child_weekly.get(item_id, {}).get(weeks[0], 0.0)}",
+                    "StartOnHand": f"{start_onhand}+{first_week_plan}",
+                    "TotalStock": total_stock,
                     "cells": {}
                 }
                 
                 # 填充周数据
+                start_onhand = onhand_all.get(item_id, 0.0)
+                running_stock = start_onhand
+                
                 for week in weeks:
                     plan_qty = child_weekly.get(item_id, {}).get(week, 0.0)
                     plan_row["cells"][week] = plan_qty
-                    stock_row["cells"][week] = onhand_all.get(item_id, 0.0)
+                    
+                    # 即时库存：本周库存 = 上周库存 - 本周计划
+                    running_stock = running_stock - plan_qty
+                    stock_row["cells"][week] = running_stock
                 
                 rows.extend([plan_row, stock_row])
             

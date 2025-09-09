@@ -55,7 +55,7 @@ def build_exe():
         "--windowed",                   # 无控制台窗口
         "--name=MRP",                   # 可执行文件名
         "--strip",                      # 去除调试符号
-        "--optimize=2",                 # 优化级别
+        "--optimize=0",                 # 降低优化级别，避免过度优化
         # 数据文件
         "--add-data=app/schema.sql;app", # SQL文件
         "--add-data=BOM导入模板.xlsx;.", # BOM导入模板
