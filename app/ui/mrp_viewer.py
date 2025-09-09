@@ -631,8 +631,8 @@ class MRPViewer(QWidget):
             # 成品MRP：物料名称、规格、类型、行别、期初库存、各周、合计
             fixed_headers = ["物料名称", "物料规格", "成品类型", "行别", "期初库存"]
         else:  # 综合MRP
-            # 综合MRP：物料名称、规格、类型、行别、期初库存、各周、合计
-            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
+            # 综合MRP：物料名称、规格、类型、行别、期初库存、总库存、各周、合计
+            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存", "总库存"]
         
         # 设置列数和标题
         headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
@@ -705,6 +705,11 @@ class MRPViewer(QWidget):
             else:
                 # 其他类型，格式化为数字
                 self._set_item(actual_row, 4, self._fmt(start_onhand))
+            
+            # 总库存列：只有综合MRP显示
+            if calc_type == "综合MRP":
+                total_stock = row.get("TotalStock", 0)
+                self._set_item(actual_row, 5, self._fmt(total_stock))
 
             # 基本信息列不设置背景色
 
@@ -769,6 +774,8 @@ class MRPViewer(QWidget):
             self.tbl.setItem(plan_total_row, 2, QTableWidgetItem(""))
             self.tbl.setItem(plan_total_row, 3, QTableWidgetItem("订单计划"))
             self.tbl.setItem(plan_total_row, 4, QTableWidgetItem(""))
+            if calc_type == "综合MRP":
+                self.tbl.setItem(plan_total_row, 5, QTableWidgetItem(""))
             
             # 第二行：即时库存总计
             stock_total_row = len(rows) + 1
@@ -777,6 +784,8 @@ class MRPViewer(QWidget):
             self.tbl.setItem(stock_total_row, 2, QTableWidgetItem(""))
             self.tbl.setItem(stock_total_row, 3, QTableWidgetItem("即时库存"))
             self.tbl.setItem(stock_total_row, 4, QTableWidgetItem(""))
+            if calc_type == "综合MRP":
+                self.tbl.setItem(stock_total_row, 5, QTableWidgetItem(""))
             
             # 计算订单计划总计（只统计订单计划行）
             for col in range(base_col, headers_count):
@@ -817,6 +826,12 @@ class MRPViewer(QWidget):
             # 零部件MRP：一行总计行
             total_row = len(rows)
             self.tbl.setItem(total_row, 0, QTableWidgetItem("TOTAL"))
+            if calc_type == "综合MRP":
+                self.tbl.setItem(total_row, 1, QTableWidgetItem(""))
+                self.tbl.setItem(total_row, 2, QTableWidgetItem(""))
+                self.tbl.setItem(total_row, 3, QTableWidgetItem(""))
+                self.tbl.setItem(total_row, 4, QTableWidgetItem(""))
+                self.tbl.setItem(total_row, 5, QTableWidgetItem(""))
             
             # 只从周列开始统计（前5列不算）
             for col in range(base_col, headers_count):
@@ -1157,7 +1172,7 @@ class MRPViewer(QWidget):
         elif calc_type == "成品MRP":
             fixed_headers = ["物料名称", "物料规格", "成品类型", "行别", "期初库存"]
         else:  # 综合MRP
-            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存"]
+            fixed_headers = ["物料名称", "物料规格", "物料类型", "行别", "期初库存", "总库存"]
         
         headers_count = len(fixed_headers) + len(colspec) + 1  # +1 for Total column
         
@@ -1241,13 +1256,24 @@ class MRPViewer(QWidget):
                 # 其他类型，格式化为数字
                 start_onhand_display = self._fmt(start_onhand)
             
-            basic_info = [
-                row_data.get("ItemName", ""),
-                row_data.get("ItemSpec", ""),
-                row_data.get("ItemType", ""),
-                row_data.get("RowType", ""),
-                start_onhand_display
-            ]
+            # 根据计算类型构建基本信息
+            if calc_type == "综合MRP":
+                basic_info = [
+                    row_data.get("ItemName", ""),
+                    row_data.get("ItemSpec", ""),
+                    row_data.get("ItemType", ""),
+                    row_data.get("RowType", ""),
+                    start_onhand_display,
+                    self._fmt(row_data.get("TotalStock", 0))
+                ]
+            else:
+                basic_info = [
+                    row_data.get("ItemName", ""),
+                    row_data.get("ItemSpec", ""),
+                    row_data.get("ItemType", ""),
+                    row_data.get("RowType", ""),
+                    start_onhand_display
+                ]
             
             for col, value in enumerate(basic_info, 1):
                 cell = ws.cell(row=row_num, column=col, value=value)

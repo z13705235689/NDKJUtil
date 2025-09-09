@@ -357,6 +357,9 @@ class MRPService:
             in_parent_qty = float(child_in_parent_qty.get(item_id, 0.0))
             start_onhand_str = f"{int(in_parent_qty)}+{int(direct_onhand)}"
 
+            # 计算总库存（成品中的数量 + 直接库存数量）
+            total_stock = direct_onhand + in_parent_qty
+
             # 订单计划行
             plan_row = {
                 "ItemId": item_id,
@@ -366,6 +369,7 @@ class MRPService:
                 "ItemType": meta.get("ItemType", ""),
                 "RowType": "订单计划",
                 "StartOnHand": start_onhand_str,
+                "TotalStock": total_stock,
                 "cells": plan_cells
             }
             rows.append(plan_row)
@@ -385,6 +389,7 @@ class MRPService:
                 "ItemType": meta.get("ItemType", ""),
                 "RowType": "即时库存",
                 "StartOnHand": start_onhand_str,
+                "TotalStock": total_stock,
                 "cells": stock_cells
             }
             rows.append(stock_row)
